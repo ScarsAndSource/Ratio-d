@@ -1,0 +1,10 @@
+name = "plumbline-synthesis"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+
+[vars]
+ALLOWED_ORIGIN = "http://localhost:5173"
+
+# Set the real secret with:
+#   wrangler secret put ANTHROPIC_API_KEY
+# Never commit the key itself to this file or to git.

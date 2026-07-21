@@ -1,0 +1,14 @@
+{
+  "name": "plumbline-synthesis-worker",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0",
+    "typescript": "^5.5.3",
+    "@cloudflare/workers-types": "^4.20240815.0"
+  }
+}
