@@ -2,21 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useCamera } from "../hooks/useCamera";
 import { useLandmarkStream } from "../hooks/useLandmarkStream";
 import { useAutoCapture } from "../hooks/useAutoCapture";
-import {
-  computeFaceAlignment,
-  computeBrightness,
-  computeSharpness,
-} from "../lib/guidance/alignment";
+import { computeFaceAlignment, computeBrightness, computeSharpness } from "../lib/guidance/alignment";
 import ReadingRing from "./ReadingRing";
 import CalibrationHarness from "./CalibrationHarness";
+import FaceResultsScreen from "./FaceResultsScreen";
 import type { QualityReport } from "../types/landmarks";
 
 export default function CaptureStage() {
   const { videoRef, ready, error } = useCamera();
-  const { faceLandmarks, poseLandmarks, fps, modelsReady } = useLandmarkStream(
-    videoRef,
-    ready
-  );
+  const { faceLandmarks, poseLandmarks, fps, modelsReady } = useLandmarkStream(videoRef, ready);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hiResCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -62,24 +56,21 @@ export default function CaptureStage() {
     const canvas = hiResCanvasRef.current;
     const video = videoRef.current;
     if (!canvas || !video || video.readyState < 2) return null;
-    const width = 480;
-    const height = 360;
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = 480;
+    canvas.height = 360;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, width, height);
+    ctx.drawImage(video, 0, 0, 480, 360);
     return canvas.toDataURL("image/jpeg", 0.85);
   }, [videoRef]);
 
-  const { phase, acceptedCount, targetFrames, recentRejections, result, reset } =
-    useAutoCapture({
-      faceLandmarks,
-      poseLandmarks,
-      alignment,
-      quality,
-      grabRepresentativeFrame,
-    });
+  const { phase, acceptedCount, targetFrames, recentRejections, result, reset } = useAutoCapture({
+    faceLandmarks,
+    poseLandmarks,
+    alignment,
+    quality,
+    grabRepresentativeFrame,
+  });
 
   const ringLabel = !modelsReady
     ? "LOADING"
@@ -89,8 +80,11 @@ export default function CaptureStage() {
     ? `${acceptedCount}/${targetFrames}`
     : "DONE";
 
-  const ringProgress =
-    phase === "capturing" ? acceptedCount / targetFrames : alignment.progress;
+  const ringProgress = phase === "capturing" ? acceptedCount / targetFrames : alignment.progress;
+
+  if (!error && phase === "complete" && result) {
+    return <FaceResultsScreen result={result} onRecalibrate={reset} />;
+  }
 
   return (
     <div className="min-h-screen bg-ink text-ink-text flex flex-col items-center justify-center gap-8 px-6">
@@ -104,7 +98,7 @@ export default function CaptureStage() {
         </p>
       )}
 
-      {!error && phase !== "complete" && (
+      {!error && (
         <>
           <ReadingRing progress={ringProgress} label={ringLabel} />
           <p className="text-muted-onink text-sm">
@@ -117,38 +111,7 @@ export default function CaptureStage() {
         </>
       )}
 
-      {!error && phase === "complete" && result && (
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="reading text-reading text-sm tracking-[0.15em]">
-            BASELINE SET
-          </div>
-          {result.representativeImage && (
-            <img
-              src={result.representativeImage}
-              alt="Captured reference frame"
-              className="w-40 h-30 object-cover rounded-lg border border-ink-line"
-            />
-          )}
-          <div className="reading text-xs text-muted-onink space-y-1">
-            <div>{result.frameCount} frames averaged</div>
-            <div>brightness {result.avgQuality.brightness.toFixed(0)}</div>
-            <div>sharpness {result.avgQuality.sharpness.toFixed(1)}</div>
-          </div>
-          <button
-            onClick={reset}
-            className="reading rounded-full border border-brass-dim px-5 py-2 text-xs tracking-[0.15em] text-brass hover:bg-brass hover:text-ink transition-colors"
-          >
-            RECALIBRATE
-          </button>
-        </div>
-      )}
-
-      <CalibrationHarness
-        alignment={alignment}
-        quality={quality}
-        fps={fps}
-        recentRejections={recentRejections}
-      />
+      <CalibrationHarness alignment={alignment} quality={quality} fps={fps} recentRejections={recentRejections} />
     </div>
   );
 }
