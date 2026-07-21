@@ -1,15 +1,18 @@
 import type { AlignmentReading, QualityReport } from "../types/landmarks";
+import type { RejectedFrameLog } from "../types/capture";
 
 interface CalibrationHarnessProps {
   alignment: AlignmentReading;
   quality: QualityReport;
   fps: number;
+  recentRejections?: RejectedFrameLog[];
 }
 
 export default function CalibrationHarness({
   alignment,
   quality,
   fps,
+  recentRejections = [],
 }: CalibrationHarnessProps) {
   if (!import.meta.env.DEV) return null;
 
@@ -36,6 +39,18 @@ export default function CalibrationHarness({
           </div>
         ))}
       </div>
+      {recentRejections.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-ink-line">
+          <div className="text-muted-onink mb-1">rejected</div>
+          <div className="space-y-0.5">
+            {recentRejections.map((r, i) => (
+              <div key={r.timestamp + i} className="text-signal">
+                {r.reason}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
