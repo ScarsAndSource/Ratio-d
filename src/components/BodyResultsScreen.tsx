@@ -2,7 +2,9 @@ import { useMemo } from "react";
 import type { BodyCaptureSession } from "../types/bodyCapture";
 import type { TrainingAge } from "../types/bodyMetrics";
 import { useBodyMetrics } from "../hooks/useBodyMetrics";
+import { useSynthesis } from "../hooks/useSynthesis";
 import BodySymmetryHeatmap from "./BodySymmetryHeatmap";
+import SynthesisNarrative from "./SynthesisNarrative";
 
 interface BodyResultsScreenProps {
   session: BodyCaptureSession;
@@ -22,6 +24,7 @@ const BODY_FAT_LABEL = { lower: "Leaner", moderate: "Moderate", higher: "Higher"
 
 export default function BodyResultsScreen({ session, trainingAge, onRecalibrate }: BodyResultsScreenProps) {
   const { metrics, loading, error } = useBodyMetrics(session, trainingAge);
+  const { synthesis, loading: synthesisLoading, error: synthesisError } = useSynthesis(null, metrics);
 
   const frontLandmarks = useMemo(
     () => session.captures.find((c) => c.angle === "front")?.result.poseLandmarksAveraged ?? null,
@@ -86,6 +89,8 @@ export default function BodyResultsScreen({ session, trainingAge, onRecalibrate 
               <span className="text-muted-onpaper">Training age</span>
               <span className="reading text-paper-text">{TRAINING_AGE_LABEL[metrics.trainingAge]}</span>
             </div>
+
+            <SynthesisNarrative synthesis={synthesis} loading={synthesisLoading} error={synthesisError} />
           </>
         )}
 

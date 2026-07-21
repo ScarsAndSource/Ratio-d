@@ -1,6 +1,8 @@
 import type { CaptureResult } from "../types/capture";
 import { useFaceMetrics } from "../hooks/useFaceMetrics";
+import { useSynthesis } from "../hooks/useSynthesis";
 import FaceExplainabilityOverlay from "./FaceExplainabilityOverlay";
+import SynthesisNarrative from "./SynthesisNarrative";
 
 interface FaceResultsScreenProps {
   result: CaptureResult;
@@ -9,6 +11,7 @@ interface FaceResultsScreenProps {
 
 export default function FaceResultsScreen({ result, onRecalibrate }: FaceResultsScreenProps) {
   const { metrics, faceShape, loading, error } = useFaceMetrics(result);
+  const { synthesis, loading: synthesisLoading, error: synthesisError } = useSynthesis(metrics, null);
 
   return (
     <div className="min-h-screen bg-paper text-paper-text">
@@ -66,6 +69,8 @@ export default function FaceResultsScreen({ result, onRecalibrate }: FaceResults
                 <span className="reading text-paper-text capitalize">{faceShape}</span>
               </div>
             )}
+
+            <SynthesisNarrative synthesis={synthesis} loading={synthesisLoading} error={synthesisError} />
           </>
         )}
 
