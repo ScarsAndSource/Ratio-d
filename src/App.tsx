@@ -1,6 +1,9 @@
 import { useState } from "react";
 import ReadingRing from "./components/ReadingRing";
 import CaptureStage from "./components/CaptureStage";
+import BodyCaptureFlow from "./components/BodyCaptureFlow";
+
+type Mode = "home" | "face" | "body";
 
 const steps = [
   {
@@ -21,9 +24,10 @@ const steps = [
 ];
 
 export default function App() {
-  const [calibrating, setCalibrating] = useState(false);
+  const [mode, setMode] = useState<Mode>("home");
 
-  if (calibrating) return <CaptureStage />;
+  if (mode === "face") return <CaptureStage />;
+  if (mode === "body") return <BodyCaptureFlow />;
 
   return (
     <main className="min-h-screen bg-ink text-ink-text">
@@ -40,12 +44,20 @@ export default function App() {
 
         <ReadingRing progress={0.4} label="ALIGNING" />
 
-        <button
-          onClick={() => setCalibrating(true)}
-          className="reading rounded-full border border-brass-dim px-6 py-3 text-sm tracking-[0.15em] text-brass hover:bg-brass hover:text-ink transition-colors"
-        >
-          BEGIN CALIBRATION
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => setMode("face")}
+            className="reading rounded-full border border-brass-dim px-6 py-3 text-sm tracking-[0.15em] text-brass hover:bg-brass hover:text-ink transition-colors"
+          >
+            BEGIN FACE SCAN
+          </button>
+          <button
+            onClick={() => setMode("body")}
+            className="reading rounded-full border border-brass-dim px-6 py-3 text-sm tracking-[0.15em] text-brass hover:bg-brass hover:text-ink transition-colors"
+          >
+            BEGIN BODY SCAN
+          </button>
+        </div>
 
         <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-px bg-ink-line mt-8 rounded-lg overflow-hidden">
           {steps.map((s) => (
