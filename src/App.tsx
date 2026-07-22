@@ -2,6 +2,9 @@ import { useState } from "react";
 import ReadingRing from "./components/ReadingRing";
 import CaptureStage from "./components/CaptureStage";
 import BodyCaptureFlow from "./components/BodyCaptureFlow";
+import DailyFocusWidget from "./components/DailyFocusWidget";
+import RescanCooldownNotice from "./components/RescanCooldownNotice";
+import { useScanHistory } from "./hooks/useScanHistory";
 
 type Mode = "home" | "face" | "body";
 
@@ -25,6 +28,7 @@ const steps = [
 
 export default function App() {
   const [mode, setMode] = useState<Mode>("home");
+  const { dailyFocus, cooldown, loading: historyLoading } = useScanHistory();
 
   if (mode === "face") return <CaptureStage />;
   if (mode === "body") return <BodyCaptureFlow />;
@@ -44,6 +48,12 @@ export default function App() {
 
         <ReadingRing progress={0.4} label="ALIGNING" />
 
+        {!historyLoading && dailyFocus && (
+          <div className="w-full max-w-sm">
+            <DailyFocusWidget label={dailyFocus.label} reason={dailyFocus.reason} />
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => setMode("face")}
@@ -58,6 +68,8 @@ export default function App() {
             BEGIN BODY SCAN
           </button>
         </div>
+
+        {!historyLoading && <RescanCooldownNotice cooldown={cooldown} />}
 
         <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-px bg-ink-line mt-8 rounded-lg overflow-hidden">
           {steps.map((s) => (

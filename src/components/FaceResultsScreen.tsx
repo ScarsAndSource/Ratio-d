@@ -1,8 +1,10 @@
 import type { CaptureResult } from "../types/capture";
 import { useFaceMetrics } from "../hooks/useFaceMetrics";
+import { useFaceProgress } from "../hooks/useFaceProgress";
 import { useSynthesis } from "../hooks/useSynthesis";
 import FaceExplainabilityOverlay from "./FaceExplainabilityOverlay";
 import SynthesisNarrative from "./SynthesisNarrative";
+import ScoreTrendDisplay from "./ScoreTrendDisplay";
 
 interface FaceResultsScreenProps {
   result: CaptureResult;
@@ -12,6 +14,7 @@ interface FaceResultsScreenProps {
 export default function FaceResultsScreen({ result, onRecalibrate }: FaceResultsScreenProps) {
   const { metrics, faceShape, loading, error } = useFaceMetrics(result);
   const { synthesis, loading: synthesisLoading, error: synthesisError } = useSynthesis(metrics, null);
+  const { trend } = useFaceProgress(metrics, result.representativeImage);
 
   return (
     <div className="min-h-screen bg-paper text-paper-text">
@@ -28,12 +31,7 @@ export default function FaceResultsScreen({ result, onRecalibrate }: FaceResults
           <>
             <FaceExplainabilityOverlay imageSrc={result.representativeImage} angles={metrics.angles} />
 
-            <div className="flex items-baseline gap-4 border-t border-paper-line pt-6">
-              <div className="reading text-5xl text-paper-text">{metrics.overallScore}</div>
-              <div className="text-sm text-muted-onpaper max-w-xs">
-                Read against your own baseline - not a rating against anyone else's.
-              </div>
-            </div>
+            <ScoreTrendDisplay trend={trend} currentValue={metrics.overallScore} />
 
             <div className="rounded-lg bg-paper-panel border border-paper-line p-5">
               <div className="reading text-brass text-xs tracking-[0.15em] mb-1">PRIORITY LEVER</div>

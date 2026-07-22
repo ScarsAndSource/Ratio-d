@@ -2,9 +2,12 @@ import { useMemo } from "react";
 import type { BodyCaptureSession } from "../types/bodyCapture";
 import type { TrainingAge } from "../types/bodyMetrics";
 import { useBodyMetrics } from "../hooks/useBodyMetrics";
+import { useBodyProgress } from "../hooks/useBodyProgress";
 import { useSynthesis } from "../hooks/useSynthesis";
 import BodySymmetryHeatmap from "./BodySymmetryHeatmap";
+import BodyGhostOverlay from "./BodyGhostOverlay";
 import SynthesisNarrative from "./SynthesisNarrative";
+import ScoreTrendDisplay from "./ScoreTrendDisplay";
 
 interface BodyResultsScreenProps {
   session: BodyCaptureSession;
@@ -24,12 +27,20 @@ const BODY_FAT_LABEL = { lower: "Leaner", moderate: "Moderate", higher: "Higher"
 
 export default function BodyResultsScreen({ session, trainingAge, onRecalibrate }: BodyResultsScreenProps) {
   const { metrics, loading, error } = useBodyMetrics(session, trainingAge);
-  const { synthesis, loading: synthesisLoading, error: synthesisError } = useSynthesis(null, metrics);
 
   const frontLandmarks = useMemo(
     () => session.captures.find((c) => c.angle === "front")?.result.poseLandmarksAveraged ?? null,
     [session]
   );
+
+  const { synthesis, loading: synthesisLoading, error: synthesisError } = useSynthesis(null, metrics);
+  const { trend, previousScan } = useBodyProgress(metrics, frontLandmarks);
+
+  const showGhost =
+    metrics?.frontReferenceImage &&
+    frontLandmarks &&
+    previousScan?.frontReferenceImage &&
+    previousScan.frontLandmarks;
 
   return (
     <div className="min-h-screen bg-paper text-paper-text">
@@ -44,18 +55,22 @@ export default function BodyResultsScreen({ session, trainingAge, onRecalibrate 
 
         {metrics && frontLandmarks && metrics.frontReferenceImage && (
           <>
-            <BodySymmetryHeatmap
-              imageSrc={metrics.frontReferenceImage}
-              frontLandmarks={frontLandmarks}
-              zones={metrics.zones}
-            />
+            {showGhost ? (
+              <BodyGhostOverlay
+                currentImage={metrics.frontReferenceImage}
+                previousImage={previousScan!.frontReferenceImage!}
+                currentLandmarks={frontLandmarks}
+                previousLandmarks={previousScan!.frontLandmarks!}
+              />
+            ) : (
+              <BodySymmetryHeatmap
+                imageSrc={metrics.frontReferenceImage}
+                frontLandmarks={frontLandmarks}
+                zones={metrics.zones}
+              />
+            )}
 
-            <div className="flex items-baseline gap-4 border-t border-paper-line pt-6">
-              <div className="reading text-5xl text-paper-text">{metrics.overallSymmetry}</div>
-              <div className="text-sm text-muted-onpaper max-w-xs">
-                Read against your own baseline - not a rating against anyone else's.
-              </div>
-            </div>
+            <ScoreTrendDisplay trend={trend} currentValue={metrics.overallSymmetry} />
 
             <div className="rounded-lg bg-paper-panel border border-paper-line p-5">
               <div className="reading text-brass text-xs tracking-[0.15em] mb-1">PRIORITY LEVER</div>
