@@ -2,9 +2,13 @@ name = "plumbline-synthesis"
 main = "src/index.ts"
 compatibility_date = "2024-09-01"
 
+
 [vars]
 ALLOWED_ORIGIN = "http://localhost:5173"
+SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
+SUPABASE_ANON_KEY = "your-anon-key"
 
-# Set the real secret with:
+
+# Set via wrangler secret, never committed:
 #   wrangler secret put ANTHROPIC_API_KEY
-# Never commit the key itself to this file or to git.
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
