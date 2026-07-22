@@ -88,7 +88,6 @@ export default function CaptureStage() {
 
   return (
     <div className="min-h-screen bg-ink text-ink-text flex flex-col items-center justify-center gap-8 px-6">
-      <video ref={videoRef} muted playsInline className="hidden" />
       <canvas ref={canvasRef} className="hidden" />
       <canvas ref={hiResCanvasRef} className="hidden" />
 
@@ -100,7 +99,24 @@ export default function CaptureStage() {
 
       {!error && (
         <>
-          <ReadingRing progress={ringProgress} label={ringLabel} />
+          <div className="relative w-[420px] max-w-full aspect-[3/4] rounded-xl overflow-hidden bg-black">
+            <video
+              ref={videoRef}
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div
+                className="border-2 border-dashed border-reading/70 rounded-full"
+                style={{ width: "55%", height: "72%" }}
+              />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <ReadingRing progress={ringProgress} label={ringLabel} size={220} />
+            </div>
+          </div>
+
           <p className="text-muted-onink text-sm">
             {!modelsReady
               ? "Warming up the instrument..."
