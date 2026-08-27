@@ -23,6 +23,9 @@ export function computeTrend(pointsDescending: TrendPoint[]): TrendResult {
 
   const latest = points[points.length - 1];
   const previous = points[points.length - 2];
+  if (!latest || !previous) {
+    return { hasTrend: false, direction: "flat", delta: 0, points };
+  }
   const delta = latest.value - previous.value;
   const direction: TrendDirection = Math.abs(delta) < FLAT_EPSILON ? "flat" : delta > 0 ? "up" : "down";
 
