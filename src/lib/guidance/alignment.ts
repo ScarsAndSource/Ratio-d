@@ -70,7 +70,7 @@ export function computeBrightness(imageData: ImageData): number {
   let total = 0;
   const { data } = imageData;
   for (let i = 0; i < data.length; i += 4) {
-    total += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    total += 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!;
   }
   return total / (data.length / 4);
 }
@@ -79,13 +79,13 @@ export function computeSharpness(imageData: ImageData, width: number): number {
   const { data } = imageData;
   const lum: number[] = [];
   for (let i = 0; i < data.length; i += 4) {
-    lum.push(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    lum.push(0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!);
   }
   let sumSq = 0;
   let count = 0;
   for (let i = 0; i < lum.length - 1; i++) {
     if (i % width === width - 1) continue;
-    const diff = lum[i + 1] - lum[i];
+    const diff = lum[i + 1]! - lum[i]!;
     sumSq += diff * diff;
     count++;
   }
