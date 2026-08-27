@@ -34,7 +34,7 @@ export function useBodyProgress(metrics: BodyMetrics | null, frontLandmarks: Lan
   }, [metrics, frontLandmarks]);
 
   const trend = computeTrend(scans.map((s) => ({ capturedAt: s.capturedAt, value: s.metrics.overallSymmetry })));
-  const previousScan = scans.length > 1 ? scans[1] : null;
+  const previousScan = scans.length > 1 ? scans[1] ?? null : null;
 
   return { trend, previousScan, scanCount: scans.length };
 }
