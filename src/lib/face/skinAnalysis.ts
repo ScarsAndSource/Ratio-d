@@ -22,9 +22,9 @@ function sampleRegion(imageData: ImageData, point: LandmarkPoint, boxSize = 8): 
     for (let x = cx - boxSize; x <= cx + boxSize; x++) {
       if (x < 0 || y < 0 || x >= width || y >= height) continue;
       const idx = (y * width + x) * 4;
-      r += data[idx];
-      g += data[idx + 1];
-      b += data[idx + 2];
+      r += data[idx]!;
+      g += data[idx + 1]!;
+      b += data[idx + 2]!;
       count++;
     }
   }
@@ -46,7 +46,7 @@ function variance(imageData: ImageData, point: LandmarkPoint, boxSize = 10): num
     for (let x = cx - boxSize; x <= cx + boxSize; x++) {
       if (x < 0 || y < 0 || x >= width || y >= height) continue;
       const idx = (y * width + x) * 4;
-      lums.push(0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]);
+      lums.push(0.299 * data[idx]! + 0.587 * data[idx + 1]! + 0.114 * data[idx + 2]!);
     }
   }
   if (lums.length === 0) return 0;
