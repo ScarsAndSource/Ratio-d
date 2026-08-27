@@ -4,17 +4,20 @@ export function averageLandmarks(
   frameSets: LandmarkPoint[][]
 ): LandmarkPoint[] | null {
   if (frameSets.length === 0) return null;
-  const pointCount = frameSets[0].length;
+  const firstFrame = frameSets[0];
+  if (!firstFrame) return null;
+  const pointCount = firstFrame.length;
 
   const sums = Array.from({ length: pointCount }, () => ({ x: 0, y: 0, z: 0 }));
 
   for (const frame of frameSets) {
     for (let i = 0; i < pointCount; i++) {
       const p = frame[i];
-      if (!p) continue;
-      sums[i].x += p.x;
-      sums[i].y += p.y;
-      sums[i].z += p.z;
+      const sum = sums[i];
+      if (!p || !sum) continue;
+      sum.x += p.x;
+      sum.y += p.y;
+      sum.z += p.z;
     }
   }
 
