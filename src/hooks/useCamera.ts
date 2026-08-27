@@ -26,9 +26,7 @@ export function useCamera(): UseCameraResult {
         await videoRef.current.play();
         setReady(true);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Camera access was denied."
-        );
+        setError(describeCameraError(err));
       }
     }
 
@@ -41,4 +39,20 @@ export function useCamera(): UseCameraResult {
   }, []);
 
   return { videoRef, ready, error };
+}
+
+function describeCameraError(err: unknown): string {
+  if (!(err instanceof Error)) return "Camera access was denied.";
+  switch (err.name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Camera access was denied. Allow camera access in your browser's site settings and reload.";
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return "No camera was found on this device.";
+    case "NotReadableError":
+      return "Your camera is already in use by another app or tab. Close it and try again.";
+    default:
+      return err.message || "Camera access was denied.";
+  }
 }
