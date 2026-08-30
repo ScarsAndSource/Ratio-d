@@ -61,7 +61,7 @@ export default function BodySymmetryHeatmap({
   return (
     <div className="relative rounded-lg overflow-hidden border border-paper-line" style={{ width, height }}>
       <img src={imageSrc} alt="Your captured front reference frame" className="absolute inset-0 w-full h-full object-cover" />
-      <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 w-full h-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 w-full h-full" aria-hidden="true">
         {markers.map((m, i) => {
           const score = byRegion[m.region];
           if (!m.point || !score) return null;

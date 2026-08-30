@@ -16,8 +16,11 @@ const OPTIONS: { value: TrainingAge; label: string }[] = [
 export default function TrainingAgeSelect({ value, onChange }: TrainingAgeSelectProps) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="reading text-xs tracking-[0.15em] text-muted-onink">TRAINING AGE</label>
+      <label htmlFor="training-age-select" className="reading text-xs tracking-[0.15em] text-muted-onink">
+        TRAINING AGE
+      </label>
       <select
+        id="training-age-select"
         value={value}
         onChange={(e) => onChange(e.target.value as TrainingAge)}
         className="reading rounded-md border border-ink-line bg-ink-panel px-3 py-2 text-sm text-ink-text focus:outline-none focus:border-brass"

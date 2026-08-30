@@ -50,8 +50,16 @@ export default function BodyResultsScreen({ session, trainingAge, onRecalibrate 
           <h1 className="font-display text-3xl font-light">Your body reading</h1>
         </div>
 
-        {loading && <p className="text-muted-onpaper text-sm">Reading the capture...</p>}
-        {error && <p className="text-signal text-sm">{error}</p>}
+        {loading && (
+          <p role="status" className="text-muted-onpaper text-sm">
+            Reading the capture...
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="text-signal text-sm">
+            {error}
+          </p>
+        )}
 
         {metrics && frontLandmarks && metrics.frontReferenceImage && (
           <>

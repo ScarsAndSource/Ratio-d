@@ -39,26 +39,43 @@ export default function AuthScreen({ onSignIn, onSignUp, error }: AuthScreenProp
 
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="email"
-            required
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="reading rounded-md border border-ink-line bg-ink-panel px-3 py-2 text-sm text-ink-text focus:outline-none focus:border-brass"
-          />
-          <input
-            type="password"
-            required
-            minLength={8}
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="reading rounded-md border border-ink-line bg-ink-panel px-3 py-2 text-sm text-ink-text focus:outline-none focus:border-brass"
-          />
+          <div className="flex flex-col gap-1">
+            <label htmlFor="auth-email" className="sr-only">
+              Email
+            </label>
+            <input
+              id="auth-email"
+              type="email"
+              required
+              placeholder="Email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="reading rounded-md border border-ink-line bg-ink-panel px-3 py-2 text-sm text-ink-text focus:outline-none focus:border-brass"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="auth-password" className="sr-only">
+              Password
+            </label>
+            <input
+              id="auth-password"
+              type="password"
+              required
+              minLength={8}
+              placeholder="Password"
+              autoComplete={mode === "signIn" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="reading rounded-md border border-ink-line bg-ink-panel px-3 py-2 text-sm text-ink-text focus:outline-none focus:border-brass"
+            />
+          </div>
 
-
-          {error && <p className="text-signal text-sm">{error}</p>}
+          {error && (
+            <p role="alert" className="text-signal text-sm">
+              {error}
+            </p>
+          )}
 
 
           <button

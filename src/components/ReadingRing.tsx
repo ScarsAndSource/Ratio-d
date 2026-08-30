@@ -29,12 +29,16 @@ export default function ReadingRing({
     <div
       className="relative flex items-center justify-center"
       style={{ width: size, height: size }}
+      role="status"
+      aria-live="polite"
+      aria-label={`${label}, ${Math.round(Math.min(Math.max(progress, 0), 1) * 100)} percent`}
     >
       <svg
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
         className="absolute inset-0 -rotate-90"
+        aria-hidden="true"
       >
         <g stroke="#8F6E3F" strokeWidth={1}>
           {ticks.map((t, i) => {
@@ -79,7 +83,7 @@ export default function ReadingRing({
         />
       </svg>
 
-      <div className="reading text-center">
+      <div className="reading text-center" aria-hidden="true">
         <div className="text-reading text-sm tracking-[0.2em]">{label}</div>
       </div>
     </div>

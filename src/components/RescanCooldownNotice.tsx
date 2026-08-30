@@ -8,7 +8,7 @@ export default function RescanCooldownNotice({ cooldown }: RescanCooldownNoticeP
   if (!cooldown.onCooldown) return null;
 
   return (
-    <p className="reading text-xs text-muted-onink tracking-wide">
+    <p role="status" className="reading text-xs text-muted-onink tracking-wide">
       Come back in {cooldown.daysRemaining} {cooldown.daysRemaining === 1 ? "day" : "days"} - change needs time to show.
     </p>
   );

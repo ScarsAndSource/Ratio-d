@@ -8,12 +8,16 @@ interface SynthesisNarrativeProps {
 
 export default function SynthesisNarrative({ synthesis, loading, error }: SynthesisNarrativeProps) {
   if (loading) {
-    return <p className="text-muted-onpaper text-sm">Writing up the read...</p>;
+    return (
+      <p role="status" className="text-muted-onpaper text-sm">
+        Writing up the read...
+      </p>
+    );
   }
 
   if (error) {
     return (
-      <p className="text-muted-onpaper text-sm">
+      <p role="alert" className="text-muted-onpaper text-sm">
         Narration is unavailable right now, but the readings above are unaffected.
       </p>
     );

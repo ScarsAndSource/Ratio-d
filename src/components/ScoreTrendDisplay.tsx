@@ -18,13 +18,23 @@ export default function ScoreTrendDisplay({ trend, currentValue }: ScoreTrendDis
   }
 
   const arrow = trend.direction === "up" ? "↑" : trend.direction === "down" ? "↓" : "→";
-  const deltaLabel = trend.direction === "flat" ? "holding steady" : `${arrow} ${Math.abs(trend.delta).toFixed(0)} since your last scan`;
+  const directionWord = trend.direction === "up" ? "up" : trend.direction === "down" ? "down" : "flat";
+  const deltaText =
+    trend.direction === "flat" ? "holding steady" : `${Math.abs(trend.delta).toFixed(0)} since your last scan`;
 
   return (
     <div className="flex flex-col gap-2 border-t border-paper-line pt-6">
       <div className="flex items-baseline gap-4">
         <div className="reading text-5xl text-paper-text">{currentValue}</div>
-        <div className="reading text-reading text-sm">{deltaLabel}</div>
+        <div className="reading text-reading text-sm" role="status">
+          {trend.direction !== "flat" && (
+            <span aria-hidden="true" className="mr-1">
+              {arrow}
+            </span>
+          )}
+          <span className="sr-only">{directionWord}, </span>
+          {deltaText}
+        </div>
       </div>
       <div className="text-sm text-muted-onpaper max-w-sm">
         Trend across {trend.points.length} scans - read against your own baseline only.

@@ -29,7 +29,11 @@ export default function CalibrationHarness({
   ];
 
   return (
-    <div className="fixed bottom-4 right-4 w-64 rounded-lg border border-ink-line bg-ink-panel/95 backdrop-blur p-4 reading text-xs">
+    <div
+      role="status"
+      aria-label="Developer calibration panel"
+      className="fixed bottom-4 right-4 w-64 rounded-lg border border-ink-line bg-ink-panel/95 backdrop-blur p-4 reading text-xs"
+    >
       <div className="text-brass-dim mb-2 tracking-[0.15em]">CALIBRATION - DEV ONLY</div>
       <div className="space-y-1">
         {rows.map(([label, value, ok]) => (

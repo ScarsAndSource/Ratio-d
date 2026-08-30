@@ -46,11 +46,20 @@ export default function AccountMenu({ email, onSignOut, onDeleteAccount }: Accou
 
 
       {confirming && (
-        <div className="w-72 rounded-lg border border-ink-line bg-ink-panel p-4 text-left">
-          <p className="text-sm text-ink-text mb-3">
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-heading"
+          className="w-72 rounded-lg border border-ink-line bg-ink-panel p-4 text-left"
+        >
+          <p id="delete-account-heading" className="text-sm text-ink-text mb-3">
             This permanently deletes your account and every scan stored under it. This can't be undone.
           </p>
-          {deleteError && <p className="text-signal text-xs mb-2">{deleteError}</p>}
+          {deleteError && (
+            <p role="alert" className="text-signal text-xs mb-2">
+              {deleteError}
+            </p>
+          )}
           <div className="flex gap-2 justify-end">
             <button
               onClick={() => setConfirming(false)}

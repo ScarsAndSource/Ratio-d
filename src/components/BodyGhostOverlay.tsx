@@ -42,6 +42,7 @@ export default function BodyGhostOverlay({
       </div>
       <button
         onClick={() => setShowGhost((v) => !v)}
+        aria-pressed={showGhost}
         className="reading self-start text-xs tracking-[0.15em] text-brass-dim hover:text-brass transition-colors"
       >
         {showGhost ? "HIDE" : "SHOW"} PREVIOUS SCAN OVERLAY

@@ -97,18 +97,18 @@ export default function BodyCaptureFlow() {
       <canvas ref={hiResCanvasRef} className="hidden" />
 
       {error && (
-        <p className="text-signal reading text-sm max-w-sm text-center">
+        <p role="alert" className="text-signal reading text-sm max-w-sm text-center">
           {error} - camera access is required to scan.
         </p>
       )}
 
       {!error && (
         <>
-          <div className="reading text-brass-dim text-xs tracking-[0.15em]">
+          <div role="status" className="reading text-brass-dim text-xs tracking-[0.15em]">
             ANGLE {angleIndex + 1}/{BODY_ANGLE_SEQUENCE.length} - {BODY_ANGLE_LABEL[currentAngle].toUpperCase()}
           </div>
           <ReadingRing progress={ringProgress} label={ringLabel} />
-          <p className="text-muted-onink text-sm text-center max-w-sm">
+          <p role="status" className="text-muted-onink text-sm text-center max-w-sm">
             {!modelsReady
               ? "Warming up the instrument..."
               : phase === "aligning"

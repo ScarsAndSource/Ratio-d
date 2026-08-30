@@ -92,7 +92,7 @@ export default function CaptureStage() {
       <canvas ref={hiResCanvasRef} className="hidden" />
 
       {error && (
-        <p className="text-signal reading text-sm max-w-sm text-center">
+        <p role="alert" className="text-signal reading text-sm max-w-sm text-center">
           {error} - camera access is required to calibrate.
         </p>
       )}
@@ -106,7 +106,7 @@ export default function CaptureStage() {
               playsInline
               className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
             />
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
               <div
                 className="border-2 border-dashed border-reading/70 rounded-full"
                 style={{ width: "55%", height: "72%" }}
@@ -117,7 +117,7 @@ export default function CaptureStage() {
             </div>
           </div>
 
-          <p className="text-muted-onink text-sm">
+          <p role="status" className="text-muted-onink text-sm">
             {!modelsReady
               ? "Warming up the instrument..."
               : phase === "aligning"

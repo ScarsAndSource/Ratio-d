@@ -16,7 +16,7 @@ export default function FaceExplainabilityOverlay({
   return (
     <div className="relative rounded-lg overflow-hidden border border-paper-line" style={{ width, height }}>
       <img src={imageSrc} alt="Your captured reference frame" className="absolute inset-0 w-full h-full object-cover" />
-      <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 w-full h-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 w-full h-full" aria-hidden="true">
         {angles.map((a, i) => {
           const [p1, p2] = a.points;
           const x1 = p1.x * width;
