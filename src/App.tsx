@@ -7,6 +7,7 @@ import RescanCooldownNotice from "./components/RescanCooldownNotice";
 import AuthScreen from "./components/AuthScreen";
 import ConsentScreen from "./components/ConsentScreen";
 import AccountMenu from "./components/AccountMenu";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { useAuth } from "./hooks/useAuth";
 import { useConsent } from "./hooks/useConsent";
 import { useScanHistory } from "./hooks/useScanHistory";
@@ -58,8 +59,20 @@ export default function App() {
   }
 
 
-  if (mode === "face") return <CaptureStage />;
-  if (mode === "body") return <BodyCaptureFlow />;
+  if (mode === "face") {
+    return (
+      <ErrorBoundary onReset={() => setMode("home")}>
+        <CaptureStage />
+      </ErrorBoundary>
+    );
+  }
+  if (mode === "body") {
+    return (
+      <ErrorBoundary onReset={() => setMode("home")}>
+        <BodyCaptureFlow />
+      </ErrorBoundary>
+    );
+  }
 
 
   return (
