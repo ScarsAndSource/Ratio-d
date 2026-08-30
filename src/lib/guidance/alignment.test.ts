@@ -57,24 +57,24 @@ describe("computeFaceAlignment", () => {
     expect(result.guidance).toBe("Locked");
   });
 
-  it("guides 'Step back' when interocular distance is below target (current implementation)", () => {
+  it("guides 'Move closer' when interocular distance is below target (face too far away)", () => {
     const landmarks = buildLandmarks({
       [LEFT_EYE_OUTER]: pt(0.49, 0.5),
       [RIGHT_EYE_OUTER]: pt(0.51, 0.5), // interocular = 0.02, below target 0.18
       [NOSE_TIP]: pt(0.5, 0.5),
     });
     const result = computeFaceAlignment(landmarks);
-    expect(result.guidance).toBe("Step back");
+    expect(result.guidance).toBe("Move closer");
   });
 
-  it("guides 'Move closer' when interocular distance is at/above target (current implementation)", () => {
+  it("guides 'Step back' when interocular distance is above target (face too close)", () => {
     const landmarks = buildLandmarks({
       [LEFT_EYE_OUTER]: pt(0.3, 0.5),
       [RIGHT_EYE_OUTER]: pt(0.7, 0.5), // interocular = 0.4, above target 0.18
       [NOSE_TIP]: pt(0.5, 0.5),
     });
     const result = computeFaceAlignment(landmarks);
-    expect(result.guidance).toBe("Move closer");
+    expect(result.guidance).toBe("Step back");
   });
 
   it("guides 'Center your face' when the nose is off-center but distance/level are fine", () => {

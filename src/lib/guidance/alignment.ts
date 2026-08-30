@@ -47,7 +47,7 @@ export function computeFaceAlignment(
   let guidance = "Hold steady";
   const worst = Math.min(centeredness, distanceFit, levelness);
   if (worst === distanceFit && distanceFit < 0.9) {
-    guidance = interocular < TARGET_INTEROCULAR ? "Step back" : "Move closer";
+    guidance = interocular < TARGET_INTEROCULAR ? "Move closer" : "Step back";
   } else if (worst === centeredness && centeredness < 0.9) {
     guidance = "Center your face";
   } else if (worst === levelness && levelness < 0.9) {
