@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#12161C" />
+  <circle cx="600" cy="280" r="120" fill="none" stroke="#262D37" stroke-width="6" />
+  <path
+    d="M600 160 A120 120 0 0 1 713.5 327"
+    fill="none"
+    stroke="#6FC9B8"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
+  <circle cx="712" cy="325" r="5" fill="#C89B5C" />
+  <text x="600" y="470" text-anchor="middle" font-family="serif" font-size="48" fill="#F5F0E8" letter-spacing="0.02em">Plumbline</text>
+  <text x="600" y="510" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#8A8578">An instrument, not a mirror.</text>
+</svg>
