@@ -2,13 +2,43 @@ name = "plumbline-synthesis"
 main = "src/index.ts"
 compatibility_date = "2024-09-01"
 
-
+# ---------------------------------------------------------------------------
+# LOCAL DEVELOPMENT
+# Used automatically by `wrangler dev`. Safe to commit - no real secrets here.
+# ---------------------------------------------------------------------------
 [vars]
 ALLOWED_ORIGIN = "http://localhost:5173"
 SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
 SUPABASE_ANON_KEY = "your-anon-key"
 
-
-# Set via wrangler secret, never committed:
+# Dev secrets, set once per machine (never committed):
 #   wrangler secret put ANTHROPIC_API_KEY
 #   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+
+# ---------------------------------------------------------------------------
+# PRODUCTION
+# Used only when you explicitly run `wrangler deploy --env production`.
+# `wrangler deploy` with no --env flag will NOT use this block, so an
+# accidental plain `wrangler deploy` can't ship the dev config by mistake.
+#
+# Before your first production deploy, replace every value below:
+#   - ALLOWED_ORIGIN: the exact origin your frontend is served from
+#     (e.g. "https://plumbline.app" - no trailing slash, must match exactly
+#     or the browser will block every request with a CORS error)
+#   - SUPABASE_URL / SUPABASE_ANON_KEY: from your Supabase project settings
+#     (Project Settings -> API). Use the SAME project your production
+#     frontend's VITE_SUPABASE_URL points at.
+# ---------------------------------------------------------------------------
+[env.production.vars]
+ALLOWED_ORIGIN = "https://REPLACE-WITH-YOUR-PRODUCTION-DOMAIN"
+SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
+SUPABASE_ANON_KEY = "your-anon-key"
+
+# Production secrets - set separately from dev secrets, once:
+#   wrangler secret put ANTHROPIC_API_KEY --env production
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production
+#
+# The worker also refuses to serve requests if SUPABASE_URL is still left
+# at its placeholder value (see assertConfigured() in src/index.ts), so a
+# forgotten step here fails loudly with a clear error instead of silently
+# sending real user data to a nonsense URL.

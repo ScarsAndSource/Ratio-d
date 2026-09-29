@@ -7,6 +7,26 @@ export interface Env {
 }
 
 
+/**
+ * Catches the #1 real-world deploy mistake: shipping wrangler.toml with its
+ * placeholder values still in place. Without this, a misconfigured deploy
+ * doesn't fail - it silently sends every auth check to a URL that was never
+ * a real Supabase project, and every request just times out or 404s in a
+ * way that's confusing to debug from the frontend. Checked once per request
+ * rather than at module load, since Workers don't have a single reliable
+ * "startup" hook to run this against the bound env.
+ */
+function configError(env: Env): string | null {
+  if (env.SUPABASE_URL.includes("YOUR-PROJECT")) {
+    return "SUPABASE_URL is still set to its placeholder value. Set a real project URL in wrangler.toml (or --env production) before deploying.";
+  }
+  if (env.ALLOWED_ORIGIN.includes("REPLACE-WITH-YOUR-PRODUCTION-DOMAIN")) {
+    return "ALLOWED_ORIGIN is still set to its placeholder value. Set your real frontend origin in wrangler.toml (or --env production) before deploying.";
+  }
+  return null;
+}
+
+
 const SYSTEM_PROMPT = `You are the narration layer for Plumbline, a self-measurement instrument. You never measure anything yourself, code has already computed every number you're given. Your only job is to narrate those numbers honestly, plainly, and kindly.
 
 
@@ -223,6 +243,15 @@ export default {
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers });
+    }
+
+
+    const misconfiguration = configError(env);
+    if (misconfiguration) {
+      return new Response(JSON.stringify({ error: misconfiguration }), {
+        status: 500,
+        headers: { ...headers, "Content-Type": "application/json" },
+      });
     }
 
 
