@@ -8,6 +8,8 @@ import BodySymmetryHeatmap from "./BodySymmetryHeatmap";
 import BodyGhostOverlay from "./BodyGhostOverlay";
 import SynthesisNarrative from "./SynthesisNarrative";
 import ScoreTrendDisplay from "./ScoreTrendDisplay";
+import RecommendationsPanel from "./RecommendationsPanel";
+import { getBodyRecommendations } from "../lib/body/exerciseRecommendations";
 
 interface BodyResultsScreenProps {
   session: BodyCaptureSession;
@@ -85,6 +87,11 @@ export default function BodyResultsScreen({ session, trainingAge, onRecalibrate 
               <div className="font-display text-lg mb-1">{metrics.priorityLever.label}</div>
               <p className="text-sm text-muted-onpaper">{metrics.priorityLever.reason}</p>
             </div>
+
+            <RecommendationsPanel
+              title="WHERE TO FOCUS"
+              items={getBodyRecommendations(metrics.priorityLever.zoneKey)}
+            />
 
             <div className="space-y-3">
               {metrics.zones.map((z) => (

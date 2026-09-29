@@ -5,6 +5,8 @@ import { useSynthesis } from "../hooks/useSynthesis";
 import FaceExplainabilityOverlay from "./FaceExplainabilityOverlay";
 import SynthesisNarrative from "./SynthesisNarrative";
 import ScoreTrendDisplay from "./ScoreTrendDisplay";
+import RecommendationsPanel from "./RecommendationsPanel";
+import { getFaceRecommendations } from "../lib/face/careRecommendations";
 
 interface FaceResultsScreenProps {
   result: CaptureResult;
@@ -46,6 +48,11 @@ export default function FaceResultsScreen({ result, onRecalibrate }: FaceResults
               <div className="font-display text-lg mb-1">{metrics.priorityLever.label}</div>
               <p className="text-sm text-muted-onpaper">{metrics.priorityLever.reason}</p>
             </div>
+
+            <RecommendationsPanel
+              title="WHERE TO FOCUS"
+              items={getFaceRecommendations(metrics.priorityLever.subScoreKey)}
+            />
 
             <div className="space-y-3">
               {metrics.subScores.map((s) => (
