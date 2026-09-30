@@ -43,7 +43,6 @@ export interface SynthesisBodyPayload {
     actionable: boolean;
   }[];
   priorityLever: { zoneKey: string; label: string; reason: string };
-  bodyFatEstimate: { band: "lower" | "moderate" | "higher"; note: string };
   trainingAge: TrainingAge;
 }
 

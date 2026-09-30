@@ -68,10 +68,6 @@ export function toSynthesisBody(metrics: BodyMetrics): SynthesisBodyPayload {
       label: metrics.priorityLever.label,
       reason: metrics.priorityLever.reason,
     },
-    bodyFatEstimate: {
-      band: metrics.bodyFatEstimate.band,
-      note: metrics.bodyFatEstimate.note,
-    },
     trainingAge: metrics.trainingAge,
   };
 }

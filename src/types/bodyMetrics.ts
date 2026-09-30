@@ -23,16 +23,10 @@ export interface PriorityLever {
 
 export type TrainingAge = "new" | "under1y" | "1to3y" | "3plus" | "unsure";
 
-export interface BodyFatEstimate {
-  band: "lower" | "moderate" | "higher";
-  note: string;
-}
-
 export interface BodyMetrics {
   zones: MuscleZoneScore[];
   overallSymmetry: number;
   priorityLever: PriorityLever;
-  bodyFatEstimate: BodyFatEstimate;
   trainingAge: TrainingAge;
   frontReferenceImage: string | null;
   capturedAt: number;

@@ -26,18 +26,18 @@ const BODY_RECOMMENDATIONS: Record<string, Recommendation[]> = {
       detail: "Carrying load on one side trains the smaller stabilizing muscles that hold your shoulders level.",
     },
   ],
-  chestDepthProxy: [
+  forwardHead: [
     {
-      title: "Progressive push work (push-ups, presses)",
-      detail: "Chest depth responds to load over time - consistency matters more than any single exercise.",
+      title: "Chin tucks",
+      detail: "Trains the deep neck flexors that pull your head back over your shoulders - small, daily, low load.",
     },
     {
-      title: "Full range of motion",
-      detail: "Cutting reps short trains less muscle than it looks like - a full stretch at the bottom drives more of the adaptation.",
+      title: "Band pull-aparts or rows",
+      detail: "Strengthens the upper back that holds your shoulders (and so your head) in a stacked position.",
     },
     {
-      title: "Expect a 2-3 month timeline",
-      detail: "Visible chest change is typically a slow story even with good training - a flat week isn't a signal to change anything.",
+      title: "Raise your screen to eye level",
+      detail: "Most forward-head posture is a screen-height habit - fixing the setup beats fighting it with exercises.",
     },
   ],
 };
