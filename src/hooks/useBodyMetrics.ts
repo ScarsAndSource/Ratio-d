@@ -5,9 +5,9 @@ import {
   computeShoulderHipRatio,
   computeLimbSymmetry,
   computePostureTilt,
-  computeChestDepthProxy,
+  computeForwardHead,
 } from "../lib/body/geometry";
-import { buildBodyMetrics, estimateBodyFatBand } from "../lib/body/score";
+import { buildBodyMetrics } from "../lib/body/score";
 import { sanitizeAspect } from "../lib/geometry/space";
 
 interface UseBodyMetricsResult {
@@ -43,7 +43,7 @@ export function useBodyMetrics(session: BodyCaptureSession | null, trainingAge: 
     const shoulderHip = computeShoulderHipRatio(front, frontAspect);
     const posture = computePostureTilt(front, frontAspect);
     const symmetry = computeLimbSymmetry(front, frontAspect);
-    const chestDepth = side ? computeChestDepthProxy(front, side, frontAspect, sideAspect) : null;
+    const forwardHead = side ? computeForwardHead(side, sideAspect) : null;
 
     if (!shoulderHip || !posture) {
       setError("Could not read enough of the front angle to score this scan. Try recalibrating with more even lighting.");
@@ -51,12 +51,11 @@ export function useBodyMetrics(session: BodyCaptureSession | null, trainingAge: 
       return;
     }
 
-    const zones = [shoulderHip, posture, ...symmetry, ...(chestDepth ? [chestDepth] : [])];
+    const zones = [shoulderHip, posture, ...symmetry, ...(forwardHead ? [forwardHead] : [])];
 
     setMetrics(
       buildBodyMetrics({
         zones,
-        bodyFatEstimate: estimateBodyFatBand(shoulderHip.value),
         trainingAge,
         frontReferenceImage: frontImage,
       })

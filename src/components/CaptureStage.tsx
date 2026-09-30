@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCamera } from "../hooks/useCamera";
 import { useLandmarkStream } from "../hooks/useLandmarkStream";
 import { useAutoCapture } from "../hooks/useAutoCapture";
@@ -12,7 +12,7 @@ import type { QualityReport } from "../types/landmarks";
 
 export default function CaptureStage() {
   const { videoRef, ready, error } = useCamera();
-  const { faceLandmarks, poseLandmarks, fps, modelsReady } = useLandmarkStream(videoRef, ready);
+  const { faceLandmarks, poseLandmarks, headPose, fps, modelsReady } = useLandmarkStream(videoRef, ready);
   const aspect = useVideoAspect(videoRef, ready);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -26,6 +26,10 @@ export default function CaptureStage() {
   });
 
   const alignment = computeFaceAlignment(faceLandmarks, aspect);
+
+  // headPose is per-frame (straight from the stream); brightness/sharpness are
+  // sampled every 200 ms. Merge them without changing identity on every render.
+  const gateQuality = useMemo<QualityReport>(() => ({ ...quality, headPose }), [quality, headPose]);
 
   useEffect(() => {
     if (!ready || !modelsReady) return;
@@ -74,7 +78,7 @@ export default function CaptureStage() {
     faceLandmarks,
     poseLandmarks,
     alignment,
-    quality,
+    quality: gateQuality,
     grabRepresentativeFrame,
     aspect,
   });
@@ -135,7 +139,7 @@ export default function CaptureStage() {
         </>
       )}
 
-      <CalibrationHarness alignment={alignment} quality={quality} fps={fps} recentRejections={recentRejections} />
+      <CalibrationHarness alignment={alignment} quality={gateQuality} fps={fps} recentRejections={recentRejections} />
     </div>
   );
 }

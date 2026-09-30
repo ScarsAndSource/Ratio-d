@@ -1,6 +1,7 @@
 import type { LandmarkPoint } from "../../types/landmarks";
 import type { BodyAlignmentReading, BodyAngle } from "../../types/bodyCapture";
 import { toReferenceUnits } from "../geometry/space";
+import { isReliable } from "../geometry/reliability";
 
 const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
@@ -56,7 +57,14 @@ export function computeBodyAlignment(
 
   const centeredness = clamp01(1 - Math.abs(offsetX) / CENTER_TOLERANCE);
 
-  const distanceFit = lAnkle && rAnkle ? 1 : 0.3;
+  // Pose returns all 33 joints even when feet are off-frame, so presence is not
+  // evidence. Require in-frame, visible ankles. In the side view the far ankle is
+  // occluded by the near one, so one reliable ankle is enough there.
+  const feetInFrame =
+    targetAngle === "side"
+      ? isReliable(lAnkle) || isReliable(rAnkle)
+      : isReliable(lAnkle) && isReliable(rAnkle);
+  const distanceFit = feetInFrame ? 1 : 0.3;
 
   const angleMatch = matchAngle(shoulderSpan, faceDetected, targetAngle);
 

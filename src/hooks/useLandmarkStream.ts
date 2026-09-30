@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { loadFaceLandmarker, loadPoseLandmarker } from "../lib/mediapipe/setup";
-import type { LandmarkPoint } from "../types/landmarks";
+import type { HeadPose, LandmarkPoint } from "../types/landmarks";
+import { headPoseFromMatrix } from "../lib/face/headPose";
 
 interface LandmarkStreamResult {
   faceLandmarks: LandmarkPoint[] | null;
   poseLandmarks: LandmarkPoint[] | null;
+  headPose: HeadPose | null;
   fps: number;
   modelsReady: boolean;
 }
@@ -15,6 +17,7 @@ export function useLandmarkStream(
 ): LandmarkStreamResult {
   const [faceLandmarks, setFaceLandmarks] = useState<LandmarkPoint[] | null>(null);
   const [poseLandmarks, setPoseLandmarks] = useState<LandmarkPoint[] | null>(null);
+  const [headPose, setHeadPose] = useState<HeadPose | null>(null);
   const [fps, setFps] = useState(0);
   const [modelsReady, setModelsReady] = useState(false);
 
@@ -52,9 +55,10 @@ export function useLandmarkStream(
       );
       setPoseLandmarks(
         poseResult.landmarks?.[0]
-          ? poseResult.landmarks[0].map((p) => ({ x: p.x, y: p.y, z: p.z }))
+          ? poseResult.landmarks[0].map((p) => ({ x: p.x, y: p.y, z: p.z, visibility: p.visibility }))
           : null
       );
+      setHeadPose(headPoseFromMatrix(faceResult.facialTransformationMatrixes?.[0]?.data));
 
       const delta = now - lastFrameTime.current;
       lastFrameTime.current = now;
@@ -71,5 +75,5 @@ export function useLandmarkStream(
     };
   }, [active, videoRef]);
 
-  return { faceLandmarks, poseLandmarks, fps, modelsReady };
+  return { faceLandmarks, poseLandmarks, headPose, fps, modelsReady };
 }

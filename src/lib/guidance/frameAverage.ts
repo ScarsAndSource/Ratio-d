@@ -8,7 +8,7 @@ export function averageLandmarks(
   if (!firstFrame) return null;
   const pointCount = firstFrame.length;
 
-  const sums = Array.from({ length: pointCount }, () => ({ x: 0, y: 0, z: 0 }));
+  const sums = Array.from({ length: pointCount }, () => ({ x: 0, y: 0, z: 0, v: 0, vn: 0 }));
 
   for (const frame of frameSets) {
     for (let i = 0; i < pointCount; i++) {
@@ -18,14 +18,23 @@ export function averageLandmarks(
       sum.x += p.x;
       sum.y += p.y;
       sum.z += p.z;
+      if (typeof p.visibility === "number") {
+        sum.v += p.visibility;
+        sum.vn += 1;
+      }
     }
   }
 
-  return sums.map((s) => ({
-    x: s.x / frameSets.length,
-    y: s.y / frameSets.length,
-    z: s.z / frameSets.length,
-  }));
+  return sums.map((s) => {
+    const point: LandmarkPoint = {
+      x: s.x / frameSets.length,
+      y: s.y / frameSets.length,
+      z: s.z / frameSets.length,
+    };
+    // Carry visibility through so downstream metrics can reject guessed joints.
+    if (s.vn > 0) point.visibility = s.v / s.vn;
+    return point;
+  });
 }
 
 export function averageQuality(qualities: QualityReport[]): QualityReport {
