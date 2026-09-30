@@ -52,6 +52,20 @@ point at someone else's Supabase project. Before a real deploy:
    `/og-image.png` to an absolute URL (`https://YOUR-DOMAIN/og-image.png`)
    - most link-preview crawlers won't fetch a relative path.
 
+## Privacy: what leaves the device
+- Camera frames are analysed in the browser (MediaPipe). They are not uploaded.
+- One representative photo per scan is stored in your Supabase account
+  (`face_scans.representative_image`, `body_scans.front_reference_image`).
+- For the written summary, only a whitelisted set of computed numbers is sent
+  to the worker and on to Claude (`src/lib/synthesis/payload.ts`, re-validated
+  in `worker/src/payload.ts`). Photos, landmark coordinates and timestamps are
+  never included; the worker drops any extra field and rejects oversized or
+  malformed requests. Keep the consent screen in sync with this list and bump
+  `CURRENT_CONSENT_VERSION` whenever it changes.
+- After deploying this version, run
+  `supabase/migrations/2026-10-strip-duplicate-body-photo.sql` once to remove
+  the duplicate photo copy from older `body_scans` rows.
+
 ## Permanent no-list (see plan doc)
 No comparison to other people, ever. No absolute-precision claims from
 a phone camera. No "instant" on anything that isn't. No prescribing

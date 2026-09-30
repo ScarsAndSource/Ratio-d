@@ -20,7 +20,7 @@ create table if not exists public.body_scans (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
   captured_at bigint not null,
-  metrics jsonb not null,
+  metrics jsonb not null, -- computed numbers only; the photo lives in front_reference_image
   front_reference_image text,
   front_landmarks jsonb,
   created_at timestamptz not null default now()
