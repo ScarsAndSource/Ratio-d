@@ -5,4 +5,4 @@ export interface ConsentRecord {
 }
 
 
-export const CURRENT_CONSENT_VERSION = "2026-07-v1";
+export const CURRENT_CONSENT_VERSION = "2026-10-v2";

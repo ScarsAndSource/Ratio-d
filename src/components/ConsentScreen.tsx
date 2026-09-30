@@ -15,7 +15,8 @@ export default function ConsentScreen({ onConsent }: ConsentScreenProps) {
 
         <ul className="text-sm text-paper-text space-y-3 list-disc pl-5">
           <li>Your scan history: the computed scores and measurements from each face or body scan you complete.</li>
-          <li>One representative photo per scan, used only to draw the explainability overlay and progress comparisons back to you.</li>
+          <li>One representative photo per scan, stored on your device only — it is used to draw the explainability overlay and progress comparisons, and is never sent to any external service.</li>
+          <li>When you request a narrated read, only the computed scores are sent to the AI — no photos, no landmarks, no raw camera data.</li>
           <li>Nothing here is ever shown to, or shared with, any other user of this app.</li>
         </ul>
 
