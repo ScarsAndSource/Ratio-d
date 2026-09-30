@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { computeFaceAlignment, computeBrightness, computeSharpness } from "./alignment";
 import type { LandmarkPoint } from "../../types/landmarks";
+import { REFERENCE_ASPECT } from "../geometry/space";
+
+const A = REFERENCE_ASPECT;
 
 const LEFT_EYE_OUTER = 33;
 const RIGHT_EYE_OUTER = 263;
@@ -30,7 +33,7 @@ function perfectLandmarks(): LandmarkPoint[] {
 
 describe("computeFaceAlignment", () => {
   it("returns the zero/no-detection reading when landmarks is null", () => {
-    const result = computeFaceAlignment(null);
+    const result = computeFaceAlignment(null, A);
     expect(result).toEqual({
       centeredness: 0,
       distanceFit: 0,
@@ -43,13 +46,13 @@ describe("computeFaceAlignment", () => {
 
   it("returns the zero/no-detection reading when required landmarks are missing", () => {
     const landmarks = buildLandmarks({ [LEFT_EYE_OUTER]: pt(0.4, 0.5) }).slice(0, RIGHT_EYE_OUTER);
-    const result = computeFaceAlignment(landmarks);
+    const result = computeFaceAlignment(landmarks, A);
     expect(result.guidance).toBe("Bring your face into frame");
     expect(result.progress).toBe(0);
   });
 
   it("reports 'Locked' with progress > 0.92 for a centered, correctly-sized, level face", () => {
-    const result = computeFaceAlignment(perfectLandmarks());
+    const result = computeFaceAlignment(perfectLandmarks(), A);
     expect(result.centeredness).toBeCloseTo(1, 5);
     expect(result.distanceFit).toBeCloseTo(1, 5);
     expect(result.levelness).toBeCloseTo(1, 5);
@@ -63,7 +66,7 @@ describe("computeFaceAlignment", () => {
       [RIGHT_EYE_OUTER]: pt(0.51, 0.5), // interocular = 0.02, below target 0.18
       [NOSE_TIP]: pt(0.5, 0.5),
     });
-    const result = computeFaceAlignment(landmarks);
+    const result = computeFaceAlignment(landmarks, A);
     expect(result.guidance).toBe("Move closer");
   });
 
@@ -73,7 +76,7 @@ describe("computeFaceAlignment", () => {
       [RIGHT_EYE_OUTER]: pt(0.7, 0.5), // interocular = 0.4, above target 0.18
       [NOSE_TIP]: pt(0.5, 0.5),
     });
-    const result = computeFaceAlignment(landmarks);
+    const result = computeFaceAlignment(landmarks, A);
     expect(result.guidance).toBe("Step back");
   });
 
@@ -83,27 +86,52 @@ describe("computeFaceAlignment", () => {
       [RIGHT_EYE_OUTER]: pt(0.79, 0.5), // interocular still 0.18, shifted right
       [NOSE_TIP]: pt(0.7, 0.5), // offsetX = 0.2, way past the 0.08 tolerance
     });
-    const result = computeFaceAlignment(landmarks);
+    const result = computeFaceAlignment(landmarks, A);
     expect(result.guidance).toBe("Center your face");
   });
 
   it("guides 'Level your head' when eyes are tilted beyond tolerance", () => {
-    // Eye points rotated 30deg around the frame center while preserving
-    // the exact target interocular distance (0.18), so distanceFit stays
-    // perfect and levelness alone is pushed below tolerance.
+    // Eyes rotated a TRUE 30deg (isotropic space, 4:3 frame) while preserving
+    // the exact target interocular distance (0.18 reference-width units), so
+    // distanceFit stays perfect and levelness alone is pushed below tolerance.
     const landmarks = buildLandmarks({
-      [LEFT_EYE_OUTER]: pt(0.42206, 0.455),
-      [RIGHT_EYE_OUTER]: pt(0.57794, 0.545),
+      [LEFT_EYE_OUTER]: pt(0.42206, 0.44),
+      [RIGHT_EYE_OUTER]: pt(0.57794, 0.56),
       [NOSE_TIP]: pt(0.5, 0.5),
     });
-    const result = computeFaceAlignment(landmarks);
-    expect(result.raw.interocular).toBeCloseTo(0.18, 3);
-    expect(result.distanceFit).toBeCloseTo(1, 2);
+    const result = computeFaceAlignment(landmarks, A);
     expect(result.guidance).toBe("Level your head");
   });
 
+  it("reports a true 30deg tilt for that fixture", () => {
+    const landmarks = buildLandmarks({
+      [LEFT_EYE_OUTER]: pt(0.42206, 0.44),
+      [RIGHT_EYE_OUTER]: pt(0.57794, 0.56),
+      [NOSE_TIP]: pt(0.5, 0.5),
+    });
+    expect(computeFaceAlignment(landmarks, A).raw.tiltDeg).toBeCloseTo(30, 1);
+  });
+
+  it("gives the same guidance for the same physical pose on a portrait frame", () => {
+    // Same physical face on 640x480 vs 480x640 (same 100px eye half-gap 90px, level, centred)
+    const build = (w: number) =>
+      buildLandmarks({
+        [LEFT_EYE_OUTER]: pt(0.5 - 90 / w, 0.5),
+        [RIGHT_EYE_OUTER]: pt(0.5 + 90 / w, 0.5),
+        [NOSE_TIP]: pt(0.5, 0.5),
+      });
+    const landscape = computeFaceAlignment(build(640), 640 / 480);
+    const portrait = computeFaceAlignment(build(480), 480 / 640);
+    // 180px gap on a 480px-high frame: 0.375 heights = 0.28125 reference widths
+    expect(landscape.raw.interocular).toBeCloseTo(180 / 480 / REFERENCE_ASPECT, 6);
+    expect(portrait.raw.interocular).toBeCloseTo(180 / 640 / REFERENCE_ASPECT, 6);
+    expect(landscape.guidance).toBe("Step back");
+    expect(portrait.guidance).toBe("Step back");
+    expect(portrait.raw.tiltDeg).toBeCloseTo(0, 6);
+  });
+
   it("computes tiltDeg and interocular in the raw output for downstream consumers", () => {
-    const result = computeFaceAlignment(perfectLandmarks());
+    const result = computeFaceAlignment(perfectLandmarks(), A);
     expect(result.raw.interocular).toBeCloseTo(0.18, 5);
     expect(result.raw.tiltDeg).toBeCloseTo(0, 5);
   });
@@ -114,7 +142,7 @@ describe("computeFaceAlignment", () => {
       [RIGHT_EYE_OUTER]: pt(1, 1),
       [NOSE_TIP]: pt(1, 1),
     });
-    const result = computeFaceAlignment(landmarks);
+    const result = computeFaceAlignment(landmarks, A);
     for (const v of [result.centeredness, result.distanceFit, result.levelness, result.progress]) {
       expect(v).toBeGreaterThanOrEqual(0);
       expect(v).toBeLessThanOrEqual(1);
@@ -199,9 +227,6 @@ describe("computeSharpness", () => {
   });
 
   it("does not count the wraparound pair at each row boundary", () => {
-    // Two rows where only the row-end -> next-row-start transition has a
-    // huge jump; every real within-row transition is flat. If the
-    // wraparound were (incorrectly) included, sharpness would be enormous.
     const { image, width } = makeImageData([
       [10, 10, 10],
       [250, 250, 250],

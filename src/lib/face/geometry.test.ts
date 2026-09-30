@@ -30,66 +30,97 @@ function buildFace(points: Partial<Record<number, LandmarkPoint>>): LandmarkPoin
   return arr;
 }
 
+const SQUARE = 1; // frame aspect for hand-built square-coordinate fixtures
+
+/** Build both eyes with a given tilt (deg, + = outer corner higher) on a frame of `aspect`. */
+function eyesWithTilt(tiltDeg: number, aspect = SQUARE, roll = 0): LandmarkPoint[] {
+  const run = 0.1; // normalised x run of each eye
+  const rise = Math.tan((tiltDeg * Math.PI) / 180) * run * aspect; // rise in y units
+  const face = buildFace({
+    [L_EYE_INNER]: pt(0.45, 0.4),
+    [L_EYE_OUTER]: pt(0.45 - run, 0.4 - rise),
+    [R_EYE_INNER]: pt(0.55, 0.4),
+    [R_EYE_OUTER]: pt(0.55 + run, 0.4 - rise),
+  });
+  if (roll === 0) return face;
+  // rotate the four points about the face centre by `roll` degrees, in isotropic space
+  const cx = 0.5;
+  const cy = 0.4;
+  const r = (roll * Math.PI) / 180;
+  return face.map((q, i) => {
+    if (![L_EYE_INNER, L_EYE_OUTER, R_EYE_INNER, R_EYE_OUTER].includes(i)) return q;
+    const dx = (q.x - cx) * aspect;
+    const dy = q.y - cy;
+    return pt(cx + (dx * Math.cos(r) - dy * Math.sin(r)) / aspect, cy + dx * Math.sin(r) + dy * Math.cos(r));
+  });
+}
+
 describe("computeCanthalTilt", () => {
   it("returns null when eye landmarks are missing", () => {
     const face = buildFace({ [L_EYE_OUTER]: pt(0.3, 0.4) }).slice(0, L_EYE_INNER);
-    expect(computeCanthalTilt(face)).toBeNull();
+    expect(computeCanthalTilt(face, SQUARE)).toBeNull();
   });
 
-  it("moves the sub-score in a consistent direction as both canthal angles increase together", () => {
-    // Rather than assume which raw geometry maps to a "neutral" 0deg reading
-    // (the formula's sign convention depends on axis direction, not just
-    // visual flatness), verify the monotonic relationship the UI depends on:
-    // increasing both eyes' outer-corner lift by the same amount changes
-    // avgTilt, and the sub-score moves in lockstep with it (score = 50 + avgTilt*4).
-    const base = buildFace({
-      [L_EYE_OUTER]: pt(0.25, 0.42),
-      [L_EYE_INNER]: pt(0.4, 0.4),
-      [R_EYE_INNER]: pt(0.6, 0.4),
-      [R_EYE_OUTER]: pt(0.75, 0.42),
-    });
-    const lifted = buildFace({
-      [L_EYE_OUTER]: pt(0.25, 0.3), // outer corner lifted higher
-      [L_EYE_INNER]: pt(0.4, 0.4),
-      [R_EYE_INNER]: pt(0.6, 0.4),
-      [R_EYE_OUTER]: pt(0.75, 0.3),
-    });
-    const baseResult = computeCanthalTilt(base)!;
-    const liftedResult = computeCanthalTilt(lifted)!;
-    // Both stay within the valid clamped range regardless of direction:
-    expect(baseResult.subScore.value).toBeGreaterThanOrEqual(0);
-    expect(baseResult.subScore.value).toBeLessThanOrEqual(100);
-    // The lifted configuration must produce a different angle reading,
-    // proving the function actually responds to the input geometry:
-    expect(liftedResult.angle.valueDeg).not.toBeCloseTo(baseResult.angle.valueDeg, 1);
+  it("reads exactly 0 degrees / score 50 for perfectly level eyes", () => {
+    const r = computeCanthalTilt(eyesWithTilt(0), SQUARE)!;
+    expect(r.angle.valueDeg).toBe(0);
+    expect(r.subScore.value).toBe(50);
+  });
+
+  it("reads POSITIVE when the outer corners are higher than the inner corners", () => {
+    const r = computeCanthalTilt(eyesWithTilt(5), SQUARE)!;
+    expect(r.angle.valueDeg).toBeCloseTo(5, 1);
+    expect(r.subScore.value).toBeCloseTo(70, 0); // 50 + 5*4
+  });
+
+  it("reads NEGATIVE when the outer corners are lower than the inner corners", () => {
+    const r = computeCanthalTilt(eyesWithTilt(-5), SQUARE)!;
+    expect(r.angle.valueDeg).toBeCloseTo(-5, 1);
+    expect(r.subScore.value).toBeCloseTo(30, 0);
+  });
+
+  it("is monotonic: more upward tilt never lowers the score", () => {
+    const scores = [-8, -4, 0, 4, 8].map((t) => computeCanthalTilt(eyesWithTilt(t), SQUARE)!.subScore.value);
+    for (let i = 1; i < scores.length; i++) expect(scores[i]!).toBeGreaterThan(scores[i - 1]!);
+  });
+
+  it("is invariant to head roll (rotating the whole face does not change the reading)", () => {
+    const upright = computeCanthalTilt(eyesWithTilt(5), SQUARE)!.angle.valueDeg;
+    for (const roll of [-15, -7, 7, 15]) {
+      const rolled = computeCanthalTilt(eyesWithTilt(5, SQUARE, roll), SQUARE)!.angle.valueDeg;
+      expect(rolled).toBeCloseTo(upright, 1);
+    }
+  });
+
+  it("measures the same true angle on landscape, portrait and square frames", () => {
+    for (const aspect of [4 / 3, 3 / 4, 16 / 9, 1]) {
+      const r = computeCanthalTilt(eyesWithTilt(5, aspect), aspect)!;
+      expect(r.angle.valueDeg).toBeCloseTo(5, 1);
+    }
+  });
+
+  it("would misread the same landmarks if the aspect were ignored (regression guard)", () => {
+    const face = eyesWithTilt(5, 4 / 3);
+    const wrong = computeCanthalTilt(face, SQUARE)!.angle.valueDeg;
+    const right = computeCanthalTilt(face, 4 / 3)!.angle.valueDeg;
+    expect(Math.abs(wrong - right)).toBeGreaterThan(1);
   });
 
   it("marks canthalTilt as never actionable (structural trait)", () => {
-    const face = buildFace({
-      [L_EYE_OUTER]: pt(0.25, 0.38),
-      [L_EYE_INNER]: pt(0.4, 0.4),
-      [R_EYE_INNER]: pt(0.6, 0.4),
-      [R_EYE_OUTER]: pt(0.75, 0.38),
-    });
-    const result = computeCanthalTilt(face);
+    const result = computeCanthalTilt(eyesWithTilt(3), SQUARE);
     expect(result!.subScore.actionable).toBe(false);
     expect(result!.subScore.key).toBe("canthalTilt");
   });
 
   it("clamps the sub-score to [0, 100] for extreme tilt angles", () => {
-    // Push outer corners far up to create an extreme angle
-    const face = buildFace({
-      [L_EYE_OUTER]: pt(0.2, 0.1),
-      [L_EYE_INNER]: pt(0.4, 0.4),
-      [R_EYE_INNER]: pt(0.6, 0.4),
-      [R_EYE_OUTER]: pt(0.8, 0.1),
-    });
-    const result = computeCanthalTilt(face);
-    expect(result!.subScore.value).toBeGreaterThanOrEqual(0);
-    expect(result!.subScore.value).toBeLessThanOrEqual(100);
+    for (const t of [-80, 80]) {
+      const v = computeCanthalTilt(eyesWithTilt(t), SQUARE)!.subScore.value;
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(100);
+    }
   });
 
-  it("returns the inner/outer eye points used for the angle overlay", () => {
+  it("returns the inner/outer eye points (normalised, unscaled) used for the angle overlay", () => {
     const lInner = pt(0.4, 0.4);
     const lOuter = pt(0.25, 0.4);
     const face = buildFace({
@@ -98,7 +129,7 @@ describe("computeCanthalTilt", () => {
       [R_EYE_INNER]: pt(0.6, 0.4),
       [R_EYE_OUTER]: pt(0.75, 0.4),
     });
-    const result = computeCanthalTilt(face);
+    const result = computeCanthalTilt(face, 4 / 3);
     expect(result!.angle.points).toEqual([lInner, lOuter]);
   });
 });
@@ -106,7 +137,7 @@ describe("computeCanthalTilt", () => {
 describe("computeFaceShape", () => {
   it("returns null when any of the six required landmarks are missing", () => {
     const face = buildFace({ [FOREHEAD]: pt(0.5, 0.1) }).slice(0, CHIN);
-    expect(computeFaceShape(face)).toBeNull();
+    expect(computeFaceShape(face, SQUARE)).toBeNull();
   });
 
   it("classifies as 'long' when height/width ratio exceeds 1.5", () => {
@@ -118,7 +149,7 @@ describe("computeFaceShape", () => {
       [L_JAW]: pt(0.42, 0.85),
       [R_JAW]: pt(0.58, 0.85),
     });
-    expect(computeFaceShape(face)!.shape).toBe("long");
+    expect(computeFaceShape(face, SQUARE)!.shape).toBe("long");
   });
 
   it("classifies as 'round' when ratio < 1.25 and jaw is close to cheek width", () => {
@@ -130,7 +161,7 @@ describe("computeFaceShape", () => {
       [L_JAW]: pt(0.31, 0.58),
       [R_JAW]: pt(0.69, 0.58), // jawWidth = 0.38 -> jawToCheek 0.95 (> 0.9)
     });
-    expect(computeFaceShape(face)!.shape).toBe("round");
+    expect(computeFaceShape(face, SQUARE)!.shape).toBe("round");
   });
 
   it("classifies as 'square' when jawToCheek > 0.95 and ratio is not below 1.25 (misses 'round' first)", () => {
@@ -142,7 +173,7 @@ describe("computeFaceShape", () => {
       [L_JAW]: pt(0.29, 0.6),
       [R_JAW]: pt(0.71, 0.6), // jawWidth 0.42 -> jawToCheek 1.05 (> 0.95)
     });
-    expect(computeFaceShape(face)!.shape).toBe("square");
+    expect(computeFaceShape(face, SQUARE)!.shape).toBe("square");
   });
 
   it("classifies as 'heart' when jawToCheek < 0.75", () => {
@@ -154,7 +185,7 @@ describe("computeFaceShape", () => {
       [L_JAW]: pt(0.42, 0.75),
       [R_JAW]: pt(0.58, 0.75), // jawWidth 0.16 -> jawToCheek 0.4 (well under 0.75)
     });
-    expect(computeFaceShape(face)!.shape).toBe("heart");
+    expect(computeFaceShape(face, SQUARE)!.shape).toBe("heart");
   });
 
   it("defaults to 'oval' when ratio and jawToCheek both fall in the middle of every range", () => {
@@ -166,7 +197,7 @@ describe("computeFaceShape", () => {
       [L_JAW]: pt(0.335, 0.7),
       [R_JAW]: pt(0.665, 0.7), // jawWidth 0.33 -> jawToCheek 0.825 (misses 'square' and 'heart')
     });
-    expect(computeFaceShape(face)!.shape).toBe("oval");
+    expect(computeFaceShape(face, SQUARE)!.shape).toBe("oval");
   });
 
   it("scores the sub-score highest when ratio is exactly at the 1.35 ideal", () => {
@@ -178,9 +209,49 @@ describe("computeFaceShape", () => {
       [L_JAW]: pt(0.335, 0.7),
       [R_JAW]: pt(0.665, 0.7),
     });
-    const result = computeFaceShape(face);
+    const result = computeFaceShape(face, SQUARE);
     expect(result!.subScore.value).toBeCloseTo(100, 0);
     expect(result!.subScore.actionable).toBe(false); // faceShape is structural
+  });
+
+  it("scores lower as the ratio moves away from 1.35 (previously saturated at 100 for all faces)", () => {
+    const at = (ratio: number) => {
+      const w = 0.4;
+      const h = w * ratio;
+      return computeFaceShape(
+        buildFace({
+          [FOREHEAD]: pt(0.5, 0.5 - h / 2),
+          [CHIN]: pt(0.5, 0.5 + h / 2),
+          [L_CHEEKBONE]: pt(0.3, 0.5),
+          [R_CHEEKBONE]: pt(0.7, 0.5),
+          [L_JAW]: pt(0.335, 0.7),
+          [R_JAW]: pt(0.665, 0.7),
+        }),
+        SQUARE
+      )!.subScore.value;
+    };
+    expect(at(1.35)).toBeCloseTo(100, 6);
+    expect(at(1.2)).toBeCloseTo(85, 6);
+    expect(at(1.5)).toBeCloseTo(85, 6);
+    expect(at(1.0)).toBeLessThan(at(1.2));
+    expect(at(1.8)).toBeLessThan(at(1.5));
+  });
+
+  it("classifies the same physical face identically on landscape and portrait frames", () => {
+    const cheekPx = 200, heightPx = 270, jawPx = 165;
+    const build = (w: number, h: number) =>
+      buildFace({
+        [FOREHEAD]: pt(0.5, 0.5 - heightPx / 2 / h),
+        [CHIN]: pt(0.5, 0.5 + heightPx / 2 / h),
+        [L_CHEEKBONE]: pt(0.5 - cheekPx / 2 / w, 0.5),
+        [R_CHEEKBONE]: pt(0.5 + cheekPx / 2 / w, 0.5),
+        [L_JAW]: pt(0.5 - jawPx / 2 / w, 0.7),
+        [R_JAW]: pt(0.5 + jawPx / 2 / w, 0.7),
+      });
+    const land = computeFaceShape(build(640, 480), 640 / 480)!;
+    const port = computeFaceShape(build(480, 640), 480 / 640)!;
+    expect(port.shape).toBe(land.shape);
+    expect(port.subScore.value).toBeCloseTo(land.subScore.value, 6);
   });
 
   it("returns width/height guide points matching the landmarks used", () => {
@@ -196,7 +267,7 @@ describe("computeFaceShape", () => {
       [L_JAW]: pt(0.35, 0.75),
       [R_JAW]: pt(0.65, 0.75),
     });
-    const result = computeFaceShape(face);
+    const result = computeFaceShape(face, SQUARE);
     expect(result!.widthGuide.points).toEqual([lCheek, rCheek]);
     expect(result!.heightGuide.points).toEqual([forehead, chin]);
   });
@@ -205,7 +276,7 @@ describe("computeFaceShape", () => {
 describe("computeSymmetry", () => {
   it("returns null when any of the five required landmarks are missing", () => {
     const face = buildFace({ [NOSE_TIP]: pt(0.5, 0.5) }).slice(0, MOUTH_L);
-    expect(computeSymmetry(face)).toBeNull();
+    expect(computeSymmetry(face, SQUARE)).toBeNull();
   });
 
   it("scores 100 when eyes and mouth corners are perfectly symmetric around the nose", () => {
@@ -216,7 +287,7 @@ describe("computeSymmetry", () => {
       [MOUTH_L]: pt(0.35, 0.65),
       [MOUTH_R]: pt(0.65, 0.65),
     });
-    const result = computeSymmetry(face);
+    const result = computeSymmetry(face, SQUARE);
     expect(result!.subScore.value).toBeCloseTo(100, 9);
     expect(result!.subScore.key).toBe("symmetry");
     expect(result!.subScore.actionable).toBe(false); // symmetry is structural
@@ -230,8 +301,21 @@ describe("computeSymmetry", () => {
       [MOUTH_L]: pt(0.35, 0.65),
       [MOUTH_R]: pt(0.65, 0.65),
     });
-    const result = computeSymmetry(face);
+    const result = computeSymmetry(face, SQUARE);
     expect(result!.subScore.value).toBeLessThan(100);
+  });
+
+  it("is aspect-invariant for a physically symmetric face", () => {
+    const build = (w: number) =>
+      buildFace({
+        [NOSE_TIP]: pt(0.5, 0.5),
+        [L_EYE_OUTER]: pt(0.5 - 120 / w, 0.4),
+        [R_EYE_OUTER]: pt(0.5 + 120 / w, 0.4),
+        [MOUTH_L]: pt(0.5 - 70 / w, 0.65),
+        [MOUTH_R]: pt(0.5 + 70 / w, 0.65),
+      });
+    expect(computeSymmetry(build(480), 0.75)!.subScore.value).toBeCloseTo(100, 6);
+    expect(computeSymmetry(build(640), 640 / 480)!.subScore.value).toBeCloseTo(100, 6);
   });
 
   it("clamps to 0 rather than going negative for severe asymmetry", () => {
@@ -242,7 +326,7 @@ describe("computeSymmetry", () => {
       [MOUTH_L]: pt(0.1, 0.65),
       [MOUTH_R]: pt(0.52, 0.65),
     });
-    const result = computeSymmetry(face);
+    const result = computeSymmetry(face, SQUARE);
     expect(result!.subScore.value).toBe(0);
   });
 });
