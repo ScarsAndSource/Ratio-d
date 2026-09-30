@@ -166,3 +166,7 @@ export function computeForwardHead(side: LandmarkPoint[], aspect: number): Muscl
 
   return zone("forwardHead", "Head-over-shoulder alignment", "posture", value, forward);
 }
+
+export function measureForwardHeadOffset(side: LandmarkPoint[], aspect: number): number | null {
+  return computeForwardHead(side, aspect)?.raw ?? null;
+}
