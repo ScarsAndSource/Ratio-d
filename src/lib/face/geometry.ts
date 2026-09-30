@@ -6,7 +6,6 @@ const L_EYE_OUTER = 33;
 const L_EYE_INNER = 133;
 const R_EYE_INNER = 362;
 const R_EYE_OUTER = 263;
-const NOSE_TIP = 1;
 const CHIN = 152;
 const FOREHEAD = 10;
 const L_CHEEKBONE = 234;
@@ -110,8 +109,6 @@ export function computeFaceShape(
     subScore: {
       key: "faceShape",
       label: "Face shape ratio",
-      // 100 at the 1.35 target, -1 point per 0.01 of deviation. (The previous
-      // formula saturated at 100 for every ratio in ~0.83-1.87, i.e. all faces.)
       value: clamp(100 - Math.abs(ratio - 1.35) * 100, 0, 100),
       actionable: false,
     },
@@ -125,26 +122,61 @@ export interface SymmetryResult {
   subScore: SubScore;
 }
 
+const MIDLINE_TOP = 168; // nasal bridge, between the eyes
+const MIDLINE_BOTTOM = CHIN; // 152
+/** Mirrored landmark pairs: outer eyes, inner eyes, mouth corners, cheekbones, jaw. */
+const SYMMETRY_PAIRS: ReadonlyArray<readonly [number, number]> = [
+  [L_EYE_OUTER, R_EYE_OUTER],
+  [L_EYE_INNER, R_EYE_INNER],
+  [MOUTH_L, MOUTH_R],
+  [L_CHEEKBONE, R_CHEEKBONE],
+  [L_JAW, R_JAW],
+];
+const MIN_SYMMETRY_PAIRS = 3;
+
+/**
+ * Left/right symmetry about the facial midline (nasal bridge -> chin).
+ *
+ * For each mirrored pair we take the SIGNED perpendicular distance of each
+ * point from the midline. A symmetric pair has equal and opposite distances,
+ * so asymmetry = 2|sl + sr| / (|sl| + |sr|) (same scale as the old
+ * nose-distance ratio: 0 = identical, 0.22 = one side 25% wider).
+ *
+ * Because distances are perpendicular to the midline itself, in-plane head roll
+ * cancels out. The nose tip is NOT used: it sticks out in 3D, so any yaw moved
+ * it sideways and read as asymmetry. Residual yaw is handled by the capture
+ * gate (see qualityGate.ts), not here.
+ */
 export function computeSymmetry(
   landmarks: LandmarkPoint[],
   aspect: number
 ): SymmetryResult | null {
-  const nose = landmarks[NOSE_TIP];
-  const lEye = landmarks[L_EYE_OUTER];
-  const rEye = landmarks[R_EYE_OUTER];
-  const lMouth = landmarks[MOUTH_L];
-  const rMouth = landmarks[MOUTH_R];
-  if (!nose || !lEye || !rEye || !lMouth || !rMouth) return null;
+  const top = landmarks[MIDLINE_TOP];
+  const bottom = landmarks[MIDLINE_BOTTOM];
+  if (!top || !bottom) return null;
 
-  const eyeToNoseL = metricDist(lEye, nose, aspect);
-  const eyeToNoseR = metricDist(rEye, nose, aspect);
-  const mouthToNoseL = metricDist(lMouth, nose, aspect);
-  const mouthToNoseR = metricDist(rMouth, nose, aspect);
+  const ux = (bottom.x - top.x) * aspect;
+  const uy = bottom.y - top.y;
+  const len = Math.hypot(ux, uy);
+  if (len < 1e-6) return null;
 
-  const eyeAsymmetry = Math.abs(eyeToNoseL - eyeToNoseR) / ((eyeToNoseL + eyeToNoseR) / 2);
-  const mouthAsymmetry = Math.abs(mouthToNoseL - mouthToNoseR) / ((mouthToNoseL + mouthToNoseR) / 2);
-  const avgAsymmetry = (eyeAsymmetry + mouthAsymmetry) / 2;
+  const signedDist = (p: LandmarkPoint): number =>
+    ((p.x - top.x) * aspect * uy - (p.y - top.y) * ux) / len;
 
+  const asymmetries: number[] = [];
+  for (const [li, ri] of SYMMETRY_PAIRS) {
+    const l = landmarks[li];
+    const r = landmarks[ri];
+    if (!l || !r) continue;
+    const sl = signedDist(l);
+    const sr = signedDist(r);
+    const width = Math.abs(sl) + Math.abs(sr);
+    if (width < 1e-6) continue;
+    asymmetries.push((2 * Math.abs(sl + sr)) / width);
+  }
+  if (asymmetries.length < MIN_SYMMETRY_PAIRS) return null;
+
+  const avgAsymmetry = asymmetries.reduce((a, b) => a + b, 0) / asymmetries.length;
   const value = clamp(100 - avgAsymmetry * 300, 0, 100);
 
   return {
