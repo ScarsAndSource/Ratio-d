@@ -16,6 +16,10 @@ export interface CaptureResult {
   capturedAt: number;
   /** width / height of the video frame the landmarks were measured in. */
   aspect: number;
+  /** Median per-landmark SD across accepted frames, in frame-heights. Capture-time noise floor. */
+  landmarkJitterSd?: number | null;
+  /** Wall-clock span (ms) between first and last accepted frame. */
+  captureSpanMs?: number;
 }
 
 export interface RejectedFrameLog {

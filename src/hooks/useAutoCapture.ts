@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AlignmentReading, LandmarkPoint, QualityReport } from "../types/landmarks";
 import { evaluateFrame } from "../lib/guidance/qualityGate";
-import { averageLandmarks, averageQuality } from "../lib/guidance/frameAverage";
+import { averageLandmarks, averageQuality, landmarkJitterSd } from "../lib/guidance/frameAverage";
+import { TARGET_FRAMES, MIN_CAPTURE_SPAN_MS } from "../lib/guidance/captureConfig";
 import type { AcceptedFrame, CaptureResult, RejectedFrameLog } from "../types/capture";
 
 type CapturePhase = "aligning" | "capturing" | "complete";
@@ -27,7 +28,7 @@ export function useAutoCapture({
   quality,
   grabRepresentativeFrame,
   aspect,
-  targetFrames = 8,
+  targetFrames = TARGET_FRAMES,
   lockThreshold = 0.85,
   lockSustainFrames = 5,
 }: UseAutoCaptureParams) {
@@ -103,7 +104,9 @@ export function useAutoCapture({
 
     setAcceptedCount(acceptedFrames.current.length);
 
-    if (acceptedFrames.current.length >= targetFrames) {
+    const first = acceptedFrames.current[0];
+    const spanMs = first ? Date.now() - first.timestamp : 0;
+    if (acceptedFrames.current.length >= targetFrames && spanMs >= MIN_CAPTURE_SPAN_MS) {
       const faceSets = acceptedFrames.current
         .map((f) => f.faceLandmarks)
         .filter((f): f is LandmarkPoint[] => f !== null);
@@ -119,6 +122,8 @@ export function useAutoCapture({
         avgQuality: averageQuality(acceptedFrames.current.map((f) => f.quality)),
         capturedAt: Date.now(),
         aspect,
+        landmarkJitterSd: landmarkJitterSd(faceSets.length ? faceSets : poseSets, aspect),
+        captureSpanMs: spanMs,
       });
       setPhase("complete");
     }

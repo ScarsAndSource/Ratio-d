@@ -23,6 +23,7 @@ export function useLandmarkStream(
 
   const rafId = useRef<number>();
   const lastFrameTime = useRef(performance.now());
+  const lastVideoTime = useRef(-1);
 
   useEffect(() => {
     if (!active) return;
@@ -43,6 +44,15 @@ export function useLandmarkStream(
         rafId.current = requestAnimationFrame(loop);
         return;
       }
+
+      // rAF runs at display rate (60+ Hz) but the camera delivers ~30 fps. Running
+      // the models on an unchanged frame just re-counts the same observation,
+      // so skip until the video actually advances.
+      if (video.currentTime === lastVideoTime.current) {
+        rafId.current = requestAnimationFrame(loop);
+        return;
+      }
+      lastVideoTime.current = video.currentTime;
 
       const now = performance.now();
       const faceResult = face.detectForVideo(video, now);
