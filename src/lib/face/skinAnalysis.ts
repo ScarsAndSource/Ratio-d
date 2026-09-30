@@ -90,8 +90,8 @@ export function analyzeSkin(imageData: ImageData, landmarks: LandmarkPoint[]): S
   const poresValue = clamp(100 - avgVariance / 4, 0, 100);
 
   return {
-    darkCircle: { key: "darkCircle", label: "Under-eye evenness", value: darkCircleValue, actionable: true },
-    pores: { key: "pores", label: "Skin texture", value: poresValue, actionable: true },
+    darkCircle: { key: "darkCircle", label: "Under-eye evenness", value: darkCircleValue, raw: relativeDrop, actionable: true },
+    pores: { key: "pores", label: "Skin texture", value: poresValue, raw: avgVariance, actionable: true },
     undertone: classifyUndertone(cheekColor),
   };
 }

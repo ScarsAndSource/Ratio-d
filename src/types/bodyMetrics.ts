@@ -11,6 +11,7 @@ export interface MuscleZoneScore {
   label: string;
   region: ZoneRegion;
   value: number;
+  raw?: number;
   actionable: boolean;
   heatColor: "green" | "yellow" | "red";
 }

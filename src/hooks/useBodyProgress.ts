@@ -4,6 +4,7 @@ import type { LandmarkPoint } from "../types/landmarks";
 import type { StoredBodyScan } from "../types/scanHistory";
 import { saveBodyScan, loadBodyScans } from "../lib/storage/scanRepository";
 import { computeTrend, type TrendResult } from "../lib/progress/trend";
+import { mdcFor } from "../lib/progress/thresholds";
 
 interface UseBodyProgressResult {
   trend: TrendResult;
@@ -33,7 +34,10 @@ export function useBodyProgress(metrics: BodyMetrics | null, frontLandmarks: Lan
     };
   }, [metrics, frontLandmarks]);
 
-  const trend = computeTrend(scans.map((s) => ({ capturedAt: s.capturedAt, value: s.metrics.overallSymmetry })));
+  const trend = computeTrend(
+    scans.map((s) => ({ capturedAt: s.capturedAt, value: s.metrics.overallSymmetry })),
+    mdcFor("score.overallSymmetry")
+  );
   const previousScan = scans.length > 1 ? scans[1] ?? null : null;
 
   return { trend, previousScan, scanCount: scans.length };

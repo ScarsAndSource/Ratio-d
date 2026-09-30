@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { CaptureResult } from "../types/capture";
 import { useFaceMetrics } from "../hooks/useFaceMetrics";
 import { useFaceProgress } from "../hooks/useFaceProgress";
@@ -7,6 +8,8 @@ import SynthesisNarrative from "./SynthesisNarrative";
 import ScoreTrendDisplay from "./ScoreTrendDisplay";
 import RecommendationsPanel from "./RecommendationsPanel";
 import { getFaceRecommendations } from "../lib/face/careRecommendations";
+import RepeatabilityPanel from "./RepeatabilityPanel";
+import { flattenFace } from "../lib/stats/flattenScan";
 
 interface FaceResultsScreenProps {
   result: CaptureResult;
@@ -17,6 +20,11 @@ export default function FaceResultsScreen({ result, onRecalibrate }: FaceResults
   const { metrics, faceShape, loading, error } = useFaceMetrics(result);
   const { synthesis, loading: synthesisLoading, error: synthesisError } = useSynthesis(metrics, null);
   const { trend } = useFaceProgress(metrics, result.representativeImage);
+
+  const repeatValues = useMemo(
+    () => (metrics ? flattenFace(metrics, result.landmarkJitterSd) : null),
+    [metrics, result.landmarkJitterSd]
+  );
 
   return (
     <div className="min-h-screen bg-paper text-paper-text">
@@ -42,6 +50,8 @@ export default function FaceResultsScreen({ result, onRecalibrate }: FaceResults
             <FaceExplainabilityOverlay imageSrc={result.representativeImage} angles={metrics.angles} />
 
             <ScoreTrendDisplay trend={trend} currentValue={metrics.overallScore} />
+
+            {repeatValues && <RepeatabilityPanel mode="face" values={repeatValues} />}
 
             <div className="rounded-lg bg-paper-panel border border-paper-line p-5">
               <div className="reading text-brass text-xs tracking-[0.15em] mb-1">PRIORITY LEVER</div>

@@ -3,6 +3,7 @@ import type { FaceMetrics } from "../types/faceMetrics";
 import type { StoredFaceScan } from "../types/scanHistory";
 import { saveFaceScan, loadFaceScans } from "../lib/storage/scanRepository";
 import { computeTrend, type TrendResult } from "../lib/progress/trend";
+import { mdcFor } from "../lib/progress/thresholds";
 
 interface UseFaceProgressResult {
   trend: TrendResult;
@@ -31,7 +32,10 @@ export function useFaceProgress(metrics: FaceMetrics | null, representativeImage
     };
   }, [metrics, representativeImage]);
 
-  const trend = computeTrend(scans.map((s) => ({ capturedAt: s.capturedAt, value: s.metrics.overallScore })));
+  const trend = computeTrend(
+    scans.map((s) => ({ capturedAt: s.capturedAt, value: s.metrics.overallScore })),
+    mdcFor("score.overall")
+  );
 
   return { trend, scanCount: scans.length };
 }

@@ -24,13 +24,20 @@ function scoreFromDeviation(ratio: number, target: number, spread: number): numb
   return clamp(100 - (Math.abs(ratio - target) / spread) * 100, 0, 100);
 }
 
-function zone(key: string, label: string, region: MuscleZoneScore["region"], value: number): MuscleZoneScore {
+function zone(
+  key: string,
+  label: string,
+  region: MuscleZoneScore["region"],
+  value: number,
+  raw?: number
+): MuscleZoneScore {
   const actionable = classifyZone(key);
   return {
     key,
     label,
     region,
     value,
+    raw,
     actionable,
     heatColor: value >= 80 ? "green" : value >= 55 ? "yellow" : "red",
   };
@@ -47,7 +54,7 @@ export function computeShoulderHipRatio(front: LandmarkPoint[], aspect: number):
   const hipWidth = metricDist(lHip, rHip, aspect);
   const ratio = shoulderWidth / hipWidth;
 
-  return zone("shoulderHipRatio", "Shoulder-to-hip width", "shoulders", scoreFromDeviation(ratio, 1.4, 0.5));
+  return zone("shoulderHipRatio", "Shoulder-to-hip width", "shoulders", scoreFromDeviation(ratio, 1.4, 0.5), ratio);
 }
 
 export function computeLimbSymmetry(front: LandmarkPoint[], aspect: number): MuscleZoneScore[] {
@@ -61,7 +68,9 @@ export function computeLimbSymmetry(front: LandmarkPoint[], aspect: number): Mus
     const upperArmL = metricDist(lShoulder, lElbow, aspect);
     const upperArmR = metricDist(rShoulder, rElbow, aspect);
     const asymmetry = Math.abs(upperArmL - upperArmR) / ((upperArmL + upperArmR) / 2);
-    results.push(zone("upperArmSymmetry", "Upper-arm length symmetry", "arms", clamp(100 - asymmetry * 400, 0, 100)));
+    results.push(
+      zone("upperArmSymmetry", "Upper-arm length symmetry", "arms", clamp(100 - asymmetry * 400, 0, 100), asymmetry)
+    );
   }
 
   const lHip = front[LEFT_HIP];
@@ -72,7 +81,9 @@ export function computeLimbSymmetry(front: LandmarkPoint[], aspect: number): Mus
     const thighL = metricDist(lHip, lKnee, aspect);
     const thighR = metricDist(rHip, rKnee, aspect);
     const asymmetry = Math.abs(thighL - thighR) / ((thighL + thighR) / 2);
-    results.push(zone("thighSymmetry", "Thigh length symmetry", "legs", clamp(100 - asymmetry * 400, 0, 100)));
+    results.push(
+      zone("thighSymmetry", "Thigh length symmetry", "legs", clamp(100 - asymmetry * 400, 0, 100), asymmetry)
+    );
   }
 
   return results;
@@ -98,7 +109,7 @@ export function computePostureTilt(front: LandmarkPoint[], aspect: number): Musc
   const tiltDeg = Math.atan2(rise, run) * (180 / Math.PI);
   const value = clamp(100 - tiltDeg * 12, 0, 100);
 
-  return zone("postureTilt", "Shoulder level", "posture", value);
+  return zone("postureTilt", "Shoulder level", "posture", value, tiltDeg);
 }
 
 /**
@@ -153,5 +164,5 @@ export function computeForwardHead(side: LandmarkPoint[], aspect: number): Muscl
     100
   );
 
-  return zone("forwardHead", "Head-over-shoulder alignment", "posture", value);
+  return zone("forwardHead", "Head-over-shoulder alignment", "posture", value, forward);
 }

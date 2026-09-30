@@ -10,6 +10,8 @@ export interface SubScore {
   key: string;
   label: string;
   value: number;
+  /** Unclamped, unscaled measurement the score was derived from. Scores saturate at 0/100 and hide variance. */
+  raw?: number;
   actionable: boolean;
   trend?: "up" | "down" | "flat";
 }

@@ -68,6 +68,7 @@ export function computeCanthalTilt(
       key: "canthalTilt",
       label: "Canthal tilt",
       value,
+      raw: avgTilt,
       actionable: false,
     },
     angle: { label: "canthal tilt", valueDeg: Number(avgTilt.toFixed(1)), points: [lInner, lOuter] },
@@ -110,6 +111,7 @@ export function computeFaceShape(
       key: "faceShape",
       label: "Face shape ratio",
       value: clamp(100 - Math.abs(ratio - 1.35) * 100, 0, 100),
+      raw: ratio,
       actionable: false,
     },
     shape,
@@ -180,6 +182,6 @@ export function computeSymmetry(
   const value = clamp(100 - avgAsymmetry * 300, 0, 100);
 
   return {
-    subScore: { key: "symmetry", label: "Facial symmetry", value, actionable: false },
+    subScore: { key: "symmetry", label: "Facial symmetry", value, raw: avgAsymmetry, actionable: false },
   };
 }
