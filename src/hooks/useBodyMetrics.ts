@@ -8,6 +8,7 @@ import {
   computeChestDepthProxy,
 } from "../lib/body/geometry";
 import { buildBodyMetrics, estimateBodyFatBand } from "../lib/body/score";
+import { sanitizeAspect } from "../lib/geometry/space";
 
 interface UseBodyMetricsResult {
   metrics: BodyMetrics | null;
@@ -25,9 +26,13 @@ export function useBodyMetrics(session: BodyCaptureSession | null, trainingAge: 
     setLoading(true);
     setError(null);
 
-    const front = session.captures.find((c) => c.angle === "front")?.result.poseLandmarksAveraged;
-    const side = session.captures.find((c) => c.angle === "side")?.result.poseLandmarksAveraged;
-    const frontImage = session.captures.find((c) => c.angle === "front")?.result.representativeImage ?? null;
+    const frontCapture = session.captures.find((c) => c.angle === "front")?.result;
+    const sideCapture = session.captures.find((c) => c.angle === "side")?.result;
+    const front = frontCapture?.poseLandmarksAveraged;
+    const side = sideCapture?.poseLandmarksAveraged;
+    const frontImage = frontCapture?.representativeImage ?? null;
+    const frontAspect = sanitizeAspect(frontCapture?.aspect);
+    const sideAspect = sanitizeAspect(sideCapture?.aspect);
 
     if (!front) {
       setError("Could not read enough of the front angle to score this scan. Try recalibrating with more even lighting.");
@@ -35,10 +40,10 @@ export function useBodyMetrics(session: BodyCaptureSession | null, trainingAge: 
       return;
     }
 
-    const shoulderHip = computeShoulderHipRatio(front);
-    const posture = computePostureTilt(front);
-    const symmetry = computeLimbSymmetry(front);
-    const chestDepth = side ? computeChestDepthProxy(front, side) : null;
+    const shoulderHip = computeShoulderHipRatio(front, frontAspect);
+    const posture = computePostureTilt(front, frontAspect);
+    const symmetry = computeLimbSymmetry(front, frontAspect);
+    const chestDepth = side ? computeChestDepthProxy(front, side, frontAspect, sideAspect) : null;
 
     if (!shoulderHip || !posture) {
       setError("Could not read enough of the front angle to score this scan. Try recalibrating with more even lighting.");

@@ -13,6 +13,7 @@ interface UseMultiAngleCaptureParams {
   faceDetected: boolean;
   quality: QualityReport;
   grabRepresentativeFrame: () => string | null;
+  aspect: number;
   targetFrames?: number;
   lockThreshold?: number;
   lockSustainFrames?: number;
@@ -25,6 +26,7 @@ export function useMultiAngleCapture({
   faceDetected,
   quality,
   grabRepresentativeFrame,
+  aspect,
   targetFrames = 8,
   lockThreshold = 0.85,
   lockSustainFrames = 5,
@@ -43,7 +45,7 @@ export function useMultiAngleCapture({
   const capturesSoFar = useRef<AngleCapture[]>([]);
 
   const currentAngle = BODY_ANGLE_SEQUENCE[angleIndex] ?? "front";
-  const alignment = computeBodyAlignment(poseLandmarks, faceDetected, currentAngle);
+  const alignment = computeBodyAlignment(poseLandmarks, faceDetected, currentAngle, aspect);
 
   const resetAngleState = useCallback(() => {
     consecutiveLock.current = 0;
@@ -118,6 +120,7 @@ export function useMultiAngleCapture({
           frameCount: acceptedPoseFrames.current.length,
           avgQuality: averageQuality(acceptedQuality.current),
           capturedAt: Date.now(),
+          aspect,
         },
       };
       capturesSoFar.current = [...capturesSoFar.current, angleCapture];

@@ -3,6 +3,8 @@ import { useCamera } from "../hooks/useCamera";
 import { useLandmarkStream } from "../hooks/useLandmarkStream";
 import { useMultiAngleCapture } from "../hooks/useMultiAngleCapture";
 import { computeBrightness, computeSharpness } from "../lib/guidance/alignment";
+import { useVideoAspect } from "../hooks/useVideoAspect";
+import { scaledFrameSize } from "../lib/geometry/space";
 import { BODY_ANGLE_SEQUENCE, BODY_ANGLE_LABEL } from "../types/bodyCapture";
 import type { TrainingAge } from "../types/bodyMetrics";
 import ReadingRing from "./ReadingRing";
@@ -14,6 +16,7 @@ import type { QualityReport } from "../types/landmarks";
 export default function BodyCaptureFlow() {
   const { videoRef, ready, error } = useCamera();
   const { faceLandmarks, poseLandmarks, fps, modelsReady } = useLandmarkStream(videoRef, ready);
+  const aspect = useVideoAspect(videoRef, ready);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hiResCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,11 +61,14 @@ export default function BodyCaptureFlow() {
     const canvas = hiResCanvasRef.current;
     const video = videoRef.current;
     if (!canvas || !video || video.readyState < 2) return null;
-    canvas.width = 480;
-    canvas.height = 640;
+    if (video.videoWidth === 0 || video.videoHeight === 0) return null;
+    // Preserve the real stream aspect: a fixed 480x640 stretched landscape video.
+    const { width, height } = scaledFrameSize(video.videoWidth / video.videoHeight, 480);
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, 480, 640);
+    ctx.drawImage(video, 0, 0, width, height);
     return canvas.toDataURL("image/jpeg", 0.85);
   }, [videoRef]);
 
@@ -72,6 +78,7 @@ export default function BodyCaptureFlow() {
       faceDetected: faceLandmarks !== null,
       quality,
       grabRepresentativeFrame,
+      aspect,
     });
 
   const ringLabel = !modelsReady

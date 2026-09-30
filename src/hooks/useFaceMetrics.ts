@@ -4,6 +4,7 @@ import type { FaceMetrics } from "../types/faceMetrics";
 import { computeCanthalTilt, computeFaceShape, computeSymmetry } from "../lib/face/geometry";
 import { analyzeSkin } from "../lib/face/skinAnalysis";
 import { buildFaceMetrics } from "../lib/face/score";
+import { sanitizeAspect } from "../lib/geometry/space";
 
 interface UseFaceMetricsResult {
   metrics: FaceMetrics | null;
@@ -25,6 +26,7 @@ export function useFaceMetrics(result: CaptureResult | null): UseFaceMetricsResu
     setError(null);
 
     const landmarks = result.faceLandmarksAveraged;
+    const aspect = sanitizeAspect(result.aspect);
     const img = new Image();
 
     img.onload = () => {
@@ -41,9 +43,9 @@ export function useFaceMetrics(result: CaptureResult | null): UseFaceMetricsResu
       ctx.drawImage(img, 0, 0);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      const canthal = computeCanthalTilt(landmarks);
-      const shape = computeFaceShape(landmarks);
-      const symmetry = computeSymmetry(landmarks);
+      const canthal = computeCanthalTilt(landmarks, aspect);
+      const shape = computeFaceShape(landmarks, aspect);
+      const symmetry = computeSymmetry(landmarks, aspect);
       const skin = analyzeSkin(imageData, landmarks);
 
       if (!canthal || !shape || !symmetry || !skin) {

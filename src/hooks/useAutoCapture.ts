@@ -12,6 +12,7 @@ interface UseAutoCaptureParams {
   alignment: AlignmentReading;
   quality: QualityReport;
   grabRepresentativeFrame: () => string | null;
+  aspect: number;
   targetFrames?: number;
   lockThreshold?: number;
   lockSustainFrames?: number;
@@ -25,6 +26,7 @@ export function useAutoCapture({
   alignment,
   quality,
   grabRepresentativeFrame,
+  aspect,
   targetFrames = 8,
   lockThreshold = 0.85,
   lockSustainFrames = 5,
@@ -116,6 +118,7 @@ export function useAutoCapture({
         frameCount: acceptedFrames.current.length,
         avgQuality: averageQuality(acceptedFrames.current.map((f) => f.quality)),
         capturedAt: Date.now(),
+        aspect,
       });
       setPhase("complete");
     }

@@ -3,6 +3,8 @@ import { useCamera } from "../hooks/useCamera";
 import { useLandmarkStream } from "../hooks/useLandmarkStream";
 import { useAutoCapture } from "../hooks/useAutoCapture";
 import { computeFaceAlignment, computeBrightness, computeSharpness } from "../lib/guidance/alignment";
+import { useVideoAspect } from "../hooks/useVideoAspect";
+import { scaledFrameSize } from "../lib/geometry/space";
 import ReadingRing from "./ReadingRing";
 import CalibrationHarness from "./CalibrationHarness";
 import FaceResultsScreen from "./FaceResultsScreen";
@@ -11,6 +13,7 @@ import type { QualityReport } from "../types/landmarks";
 export default function CaptureStage() {
   const { videoRef, ready, error } = useCamera();
   const { faceLandmarks, poseLandmarks, fps, modelsReady } = useLandmarkStream(videoRef, ready);
+  const aspect = useVideoAspect(videoRef, ready);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hiResCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -22,7 +25,7 @@ export default function CaptureStage() {
     poseDetected: false,
   });
 
-  const alignment = computeFaceAlignment(faceLandmarks);
+  const alignment = computeFaceAlignment(faceLandmarks, aspect);
 
   useEffect(() => {
     if (!ready || !modelsReady) return;
@@ -56,11 +59,14 @@ export default function CaptureStage() {
     const canvas = hiResCanvasRef.current;
     const video = videoRef.current;
     if (!canvas || !video || video.readyState < 2) return null;
-    canvas.width = 480;
-    canvas.height = 360;
+    if (video.videoWidth === 0 || video.videoHeight === 0) return null;
+    // Preserve the real stream aspect: a fixed 480x360 stretched portrait phone video.
+    const { width, height } = scaledFrameSize(video.videoWidth / video.videoHeight, 480);
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, 480, 360);
+    ctx.drawImage(video, 0, 0, width, height);
     return canvas.toDataURL("image/jpeg", 0.85);
   }, [videoRef]);
 
@@ -70,6 +76,7 @@ export default function CaptureStage() {
     alignment,
     quality,
     grabRepresentativeFrame,
+    aspect,
   });
 
   const ringLabel = !modelsReady
@@ -99,7 +106,8 @@ export default function CaptureStage() {
 
       {!error && (
         <>
-          <div className="relative w-[420px] max-w-full aspect-[3/4] rounded-xl overflow-hidden bg-black">
+          <div className="relative w-[420px] max-w-full rounded-xl overflow-hidden bg-black"
+            style={{ aspectRatio: String(aspect) }}>
             <video
               ref={videoRef}
               muted
@@ -109,7 +117,7 @@ export default function CaptureStage() {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
               <div
                 className="border-2 border-dashed border-reading/70 rounded-full"
-                style={{ width: "55%", height: "72%" }}
+                style={{ height: "72%", aspectRatio: "0.57" }}
               />
             </div>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
