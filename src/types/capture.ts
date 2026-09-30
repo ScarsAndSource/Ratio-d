@@ -14,6 +14,8 @@ export interface CaptureResult {
   frameCount: number;
   avgQuality: QualityReport;
   capturedAt: number;
+  /** width / height of the video frame the landmarks were measured in. */
+  aspect: number;
 }
 
 export interface RejectedFrameLog {

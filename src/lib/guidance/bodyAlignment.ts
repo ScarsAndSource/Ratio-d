@@ -1,5 +1,6 @@
 import type { LandmarkPoint } from "../../types/landmarks";
 import type { BodyAlignmentReading, BodyAngle } from "../../types/bodyCapture";
+import { toReferenceUnits } from "../geometry/space";
 
 const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
@@ -18,10 +19,16 @@ function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
 
+/**
+ * `aspect` is the frame width/height. Horizontal quantities are converted to
+ * REFERENCE-WIDTH units (the 4:3 frame the thresholds were tuned on) so a
+ * portrait phone stream behaves like a landscape laptop stream.
+ */
 export function computeBodyAlignment(
   poseLandmarks: LandmarkPoint[] | null,
   faceDetected: boolean,
-  targetAngle: BodyAngle
+  targetAngle: BodyAngle,
+  aspect: number
 ): BodyAlignmentReading {
   const lShoulder = poseLandmarks?.[LEFT_SHOULDER];
   const rShoulder = poseLandmarks?.[RIGHT_SHOULDER];
@@ -41,11 +48,11 @@ export function computeBodyAlignment(
     };
   }
 
-  const shoulderSpan = Math.abs(rShoulder.x - lShoulder.x);
+  const shoulderSpan = toReferenceUnits(Math.abs(rShoulder.x - lShoulder.x), 0, aspect).x;
   const shoulderCenterX = (lShoulder.x + rShoulder.x) / 2;
   const hipCenterX = (lHip.x + rHip.x) / 2;
-  const offsetX = shoulderCenterX - 0.5;
-  const hipOffsetX = hipCenterX - 0.5;
+  const offsetX = toReferenceUnits(shoulderCenterX - 0.5, 0, aspect).x;
+  const hipOffsetX = toReferenceUnits(hipCenterX - 0.5, 0, aspect).x;
 
   const centeredness = clamp01(1 - Math.abs(offsetX) / CENTER_TOLERANCE);
 

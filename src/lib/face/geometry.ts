@@ -1,5 +1,6 @@
 import type { LandmarkPoint } from "../../types/landmarks";
 import type { AngleMeasurement, SubScore } from "../../types/faceMetrics";
+import { metricDist } from "../geometry/space";
 
 const L_EYE_OUTER = 33;
 const L_EYE_INNER = 133;
@@ -15,14 +16,6 @@ const R_JAW = 397;
 const MOUTH_L = 61;
 const MOUTH_R = 291;
 
-function angleDeg(a: LandmarkPoint, b: LandmarkPoint): number {
-  return (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
-}
-
-function dist(a: LandmarkPoint, b: LandmarkPoint): number {
-  return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
-}
-
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
@@ -32,15 +25,41 @@ export interface CanthalTiltResult {
   angle: AngleMeasurement;
 }
 
-export function computeCanthalTilt(landmarks: LandmarkPoint[]): CanthalTiltResult | null {
+/**
+ * Tilt of one eye's inner->outer canthus line relative to horizontal, in
+ * degrees. POSITIVE = outer corner sits HIGHER than the inner corner.
+ *
+ * `outwardSign` is -1 for the eye on the image-left (its outer corner has the
+ * smaller x) and +1 for the eye on the image-right, so that the horizontal
+ * run is always positive and a level eye reads exactly 0.
+ *
+ * Head roll adds +phi to one eye and -phi to the other, so the two-eye average
+ * used by computeCanthalTilt is roll-invariant.
+ */
+function eyeTiltDeg(
+  inner: LandmarkPoint,
+  outer: LandmarkPoint,
+  outwardSign: -1 | 1,
+  aspect: number
+): number {
+  const run = (outer.x - inner.x) * aspect * outwardSign; // > 0 for a normal face
+  const rise = inner.y - outer.y; // > 0 when the outer corner is higher (y grows downward)
+  return (Math.atan2(rise, run) * 180) / Math.PI;
+}
+
+/** Score = 50 at 0deg, +4 points per degree of positive tilt, clamped to [0,100]. */
+export function computeCanthalTilt(
+  landmarks: LandmarkPoint[],
+  aspect: number
+): CanthalTiltResult | null {
   const lOuter = landmarks[L_EYE_OUTER];
   const lInner = landmarks[L_EYE_INNER];
   const rInner = landmarks[R_EYE_INNER];
   const rOuter = landmarks[R_EYE_OUTER];
   if (!lOuter || !lInner || !rInner || !rOuter) return null;
 
-  const leftTiltDeg = -angleDeg(lInner, lOuter);
-  const rightTiltDeg = angleDeg(rInner, rOuter);
+  const leftTiltDeg = eyeTiltDeg(lInner, lOuter, -1, aspect);
+  const rightTiltDeg = eyeTiltDeg(rInner, rOuter, 1, aspect);
   const avgTilt = (leftTiltDeg + rightTiltDeg) / 2;
 
   const value = clamp(50 + avgTilt * 4, 0, 100);
@@ -63,7 +82,10 @@ export interface FaceShapeResult {
   heightGuide: AngleMeasurement;
 }
 
-export function computeFaceShape(landmarks: LandmarkPoint[]): FaceShapeResult | null {
+export function computeFaceShape(
+  landmarks: LandmarkPoint[],
+  aspect: number
+): FaceShapeResult | null {
   const forehead = landmarks[FOREHEAD];
   const chin = landmarks[CHIN];
   const lCheek = landmarks[L_CHEEKBONE];
@@ -72,9 +94,9 @@ export function computeFaceShape(landmarks: LandmarkPoint[]): FaceShapeResult | 
   const rJaw = landmarks[R_JAW];
   if (!forehead || !chin || !lCheek || !rCheek || !lJaw || !rJaw) return null;
 
-  const faceHeight = dist(forehead, chin);
-  const cheekWidth = dist(lCheek, rCheek);
-  const jawWidth = dist(lJaw, rJaw);
+  const faceHeight = metricDist(forehead, chin, aspect);
+  const cheekWidth = metricDist(lCheek, rCheek, aspect);
+  const jawWidth = metricDist(lJaw, rJaw, aspect);
   const ratio = faceHeight / cheekWidth;
   const jawToCheek = jawWidth / cheekWidth;
 
@@ -88,7 +110,9 @@ export function computeFaceShape(landmarks: LandmarkPoint[]): FaceShapeResult | 
     subScore: {
       key: "faceShape",
       label: "Face shape ratio",
-      value: clamp(50 + (1.35 - Math.abs(ratio - 1.35)) * 60, 0, 100),
+      // 100 at the 1.35 target, -1 point per 0.01 of deviation. (The previous
+      // formula saturated at 100 for every ratio in ~0.83-1.87, i.e. all faces.)
+      value: clamp(100 - Math.abs(ratio - 1.35) * 100, 0, 100),
       actionable: false,
     },
     shape,
@@ -101,7 +125,10 @@ export interface SymmetryResult {
   subScore: SubScore;
 }
 
-export function computeSymmetry(landmarks: LandmarkPoint[]): SymmetryResult | null {
+export function computeSymmetry(
+  landmarks: LandmarkPoint[],
+  aspect: number
+): SymmetryResult | null {
   const nose = landmarks[NOSE_TIP];
   const lEye = landmarks[L_EYE_OUTER];
   const rEye = landmarks[R_EYE_OUTER];
@@ -109,10 +136,10 @@ export function computeSymmetry(landmarks: LandmarkPoint[]): SymmetryResult | nu
   const rMouth = landmarks[MOUTH_R];
   if (!nose || !lEye || !rEye || !lMouth || !rMouth) return null;
 
-  const eyeToNoseL = dist(lEye, nose);
-  const eyeToNoseR = dist(rEye, nose);
-  const mouthToNoseL = dist(lMouth, nose);
-  const mouthToNoseR = dist(rMouth, nose);
+  const eyeToNoseL = metricDist(lEye, nose, aspect);
+  const eyeToNoseR = metricDist(rEye, nose, aspect);
+  const mouthToNoseL = metricDist(lMouth, nose, aspect);
+  const mouthToNoseR = metricDist(rMouth, nose, aspect);
 
   const eyeAsymmetry = Math.abs(eyeToNoseL - eyeToNoseR) / ((eyeToNoseL + eyeToNoseR) / 2);
   const mouthAsymmetry = Math.abs(mouthToNoseL - mouthToNoseR) / ((mouthToNoseL + mouthToNoseR) / 2);

@@ -1,4 +1,5 @@
 import type { AlignmentReading, LandmarkPoint } from "../../types/landmarks";
+import { metricAngleDeg, metricDist, toReferenceUnits, REFERENCE_ASPECT } from "../geometry/space";
 
 const LEFT_EYE_OUTER = 33;
 const RIGHT_EYE_OUTER = 263;
@@ -9,8 +10,14 @@ const INTEROCULAR_TOLERANCE = 0.05;
 const CENTER_TOLERANCE = 0.08;
 const TILT_TOLERANCE_DEG = 6;
 
+/**
+ * `aspect` is the frame width/height. All thresholds below are expressed in
+ * REFERENCE-WIDTH units (the 640x480 frame they were tuned on), so guidance
+ * behaves the same on a portrait phone stream as on a 4:3 laptop stream.
+ */
 export function computeFaceAlignment(
-  landmarks: LandmarkPoint[] | null
+  landmarks: LandmarkPoint[] | null,
+  aspect: number
 ): AlignmentReading {
   const leftEye = landmarks?.[LEFT_EYE_OUTER];
   const rightEye = landmarks?.[RIGHT_EYE_OUTER];
@@ -27,19 +34,15 @@ export function computeFaceAlignment(
     };
   }
 
-  const offsetX = nose.x - 0.5;
-  const offsetY = nose.y - 0.5;
+  const { x: offsetX, y: offsetY } = toReferenceUnits(nose.x - 0.5, nose.y - 0.5, aspect);
   const offsetMag = Math.sqrt(offsetX ** 2 + offsetY ** 2);
   const centeredness = clamp01(1 - offsetMag / CENTER_TOLERANCE);
 
-  const interocular = Math.sqrt(
-    (rightEye.x - leftEye.x) ** 2 + (rightEye.y - leftEye.y) ** 2
-  );
+  const interocular = metricDist(leftEye, rightEye, aspect) / REFERENCE_ASPECT;
   const distanceError = Math.abs(interocular - TARGET_INTEROCULAR);
   const distanceFit = clamp01(1 - distanceError / INTEROCULAR_TOLERANCE);
 
-  const tiltDeg =
-    (Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x) * 180) / Math.PI;
+  const tiltDeg = metricAngleDeg(leftEye, rightEye, aspect);
   const levelness = clamp01(1 - Math.abs(tiltDeg) / TILT_TOLERANCE_DEG);
 
   const progress = (centeredness + distanceFit + levelness) / 3;
