@@ -3,8 +3,15 @@ import type { LandmarkPoint, QualityReport } from "../types/landmarks";
 import { BODY_ANGLE_SEQUENCE, type AngleCapture, type BodyCaptureSession } from "../types/bodyCapture";
 import { computeBodyAlignment } from "../lib/guidance/bodyAlignment";
 import { evaluateBodyFrame } from "../lib/guidance/bodyQualityGate";
-import { averageLandmarks, averageQuality, landmarkJitterSd } from "../lib/guidance/frameAverage";
-import { TARGET_FRAMES, MIN_CAPTURE_SPAN_MS } from "../lib/guidance/captureConfig";
+import { averageQuality } from "../lib/guidance/frameAverage";
+import {
+  DEFAULT_TARGET_FRAMES,
+  POSE_KEY_LANDMARKS,
+  isFreshSample,
+  jitterOf,
+  summarizeLandmarks,
+  type LastSample,
+} from "../lib/guidance/landmarkStats";
 import type { RejectedFrameLog } from "../types/capture";
 
 type CapturePhase = "aligning" | "capturing" | "angleComplete" | "sessionComplete";
@@ -28,7 +35,7 @@ export function useMultiAngleCapture({
   quality,
   grabRepresentativeFrame,
   aspect,
-  targetFrames = TARGET_FRAMES,
+  targetFrames = DEFAULT_TARGET_FRAMES,
   lockThreshold = 0.85,
   lockSustainFrames = 5,
 }: UseMultiAngleCaptureParams) {
@@ -44,7 +51,7 @@ export function useMultiAngleCapture({
   const bestSharpness = useRef(0);
   const bestImage = useRef<string | null>(null);
   const capturesSoFar = useRef<AngleCapture[]>([]);
-  const firstAcceptedAt = useRef(0);
+  const lastSample = useRef<LastSample | null>(null);
 
   const currentAngle = BODY_ANGLE_SEQUENCE[angleIndex] ?? "front";
   const alignment = computeBodyAlignment(poseLandmarks, faceDetected, currentAngle, aspect);
@@ -55,7 +62,7 @@ export function useMultiAngleCapture({
     acceptedQuality.current = [];
     bestSharpness.current = 0;
     bestImage.current = null;
-    firstAcceptedAt.current = 0;
+    lastSample.current = null;
     setAcceptedCount(0);
     setRecentRejections([]);
   }, []);
@@ -90,6 +97,10 @@ export function useMultiAngleCapture({
       return;
     }
 
+    // Only count genuinely new detections, spaced apart (see isFreshSample).
+    const now = Date.now();
+    if (!isFreshSample(lastSample.current, null, poseLandmarks, now)) return;
+
     const evaluation = evaluateBodyFrame({
       quality,
       alignmentProgress: alignment.progress,
@@ -103,10 +114,9 @@ export function useMultiAngleCapture({
       return;
     }
 
-    if (poseLandmarks) {
-      if (firstAcceptedAt.current === 0) firstAcceptedAt.current = Date.now();
-      acceptedPoseFrames.current.push(poseLandmarks);
-    }
+    if (!poseLandmarks) return;
+    lastSample.current = { face: null, pose: poseLandmarks, t: now };
+    acceptedPoseFrames.current.push(poseLandmarks);
     acceptedQuality.current.push(quality);
 
     if (quality.sharpness > bestSharpness.current) {
@@ -116,20 +126,21 @@ export function useMultiAngleCapture({
 
     setAcceptedCount(acceptedPoseFrames.current.length);
 
-    const spanMs = Date.now() - firstAcceptedAt.current;
-    if (acceptedPoseFrames.current.length >= targetFrames && spanMs >= MIN_CAPTURE_SPAN_MS) {
+    if (acceptedPoseFrames.current.length >= targetFrames) {
+      const poseSummary = summarizeLandmarks(acceptedPoseFrames.current, aspect);
       const angleCapture: AngleCapture = {
         angle: currentAngle,
         result: {
           faceLandmarksAveraged: null,
-          poseLandmarksAveraged: averageLandmarks(acceptedPoseFrames.current),
+          poseLandmarksAveraged: poseSummary?.landmarks ?? null,
+          faceLandmarkSd: null,
+          poseLandmarkSd: poseSummary?.sd ?? null,
+          jitter: poseSummary ? jitterOf(poseSummary, POSE_KEY_LANDMARKS) : null,
           representativeImage: bestImage.current,
           frameCount: acceptedPoseFrames.current.length,
           avgQuality: averageQuality(acceptedQuality.current),
           capturedAt: Date.now(),
           aspect,
-          landmarkJitterSd: landmarkJitterSd(acceptedPoseFrames.current, aspect),
-          captureSpanMs: spanMs,
         },
       };
       capturesSoFar.current = [...capturesSoFar.current, angleCapture];
