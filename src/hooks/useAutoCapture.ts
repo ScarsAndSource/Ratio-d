@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AlignmentReading, LandmarkPoint, QualityReport } from "../types/landmarks";
 import { evaluateFrame } from "../lib/guidance/qualityGate";
-import { averageLandmarks, averageQuality, landmarkJitterSd } from "../lib/guidance/frameAverage";
-import { TARGET_FRAMES, MIN_CAPTURE_SPAN_MS } from "../lib/guidance/captureConfig";
+import { averageQuality } from "../lib/guidance/frameAverage";
+import {
+  DEFAULT_TARGET_FRAMES,
+  FACE_KEY_LANDMARKS,
+  isFreshSample,
+  jitterOf,
+  summarizeLandmarks,
+  type LastSample,
+} from "../lib/guidance/landmarkStats";
 import type { AcceptedFrame, CaptureResult, RejectedFrameLog } from "../types/capture";
 
 type CapturePhase = "aligning" | "capturing" | "complete";
@@ -28,7 +35,7 @@ export function useAutoCapture({
   quality,
   grabRepresentativeFrame,
   aspect,
-  targetFrames = TARGET_FRAMES,
+  targetFrames = DEFAULT_TARGET_FRAMES,
   lockThreshold = 0.85,
   lockSustainFrames = 5,
 }: UseAutoCaptureParams) {
@@ -41,12 +48,14 @@ export function useAutoCapture({
   const acceptedFrames = useRef<AcceptedFrame[]>([]);
   const bestSharpness = useRef(0);
   const bestImage = useRef<string | null>(null);
+  const lastSample = useRef<LastSample | null>(null);
 
   const reset = useCallback(() => {
     consecutiveLock.current = 0;
     acceptedFrames.current = [];
     bestSharpness.current = 0;
     bestImage.current = null;
+    lastSample.current = null;
     setAcceptedCount(0);
     setRecentRejections([]);
     setResult(null);
@@ -73,10 +82,15 @@ export function useAutoCapture({
       acceptedFrames.current = [];
       bestSharpness.current = 0;
       bestImage.current = null;
+      lastSample.current = null;
       setAcceptedCount(0);
       setPhase("aligning");
       return;
     }
+
+    // Only count genuinely new detections, spaced apart (see isFreshSample).
+    const now = Date.now();
+    if (!isFreshSample(lastSample.current, faceLandmarks, poseLandmarks, now)) return;
 
     const evaluation = evaluateFrame({ quality, alignmentProgress: alignment.progress });
 
@@ -90,6 +104,15 @@ export function useAutoCapture({
       return;
     }
 
+    // The quality report is up to 200 ms old; never count a frame with no face.
+    if (!faceLandmarks) {
+      setRecentRejections((prev) =>
+        [{ reason: "No face detected", timestamp: now }, ...prev].slice(0, MAX_REJECTION_LOG)
+      );
+      return;
+    }
+
+    lastSample.current = { face: faceLandmarks, pose: poseLandmarks, t: now };
     acceptedFrames.current.push({
       faceLandmarks,
       poseLandmarks,
@@ -104,9 +127,7 @@ export function useAutoCapture({
 
     setAcceptedCount(acceptedFrames.current.length);
 
-    const first = acceptedFrames.current[0];
-    const spanMs = first ? Date.now() - first.timestamp : 0;
-    if (acceptedFrames.current.length >= targetFrames && spanMs >= MIN_CAPTURE_SPAN_MS) {
+    if (acceptedFrames.current.length >= targetFrames) {
       const faceSets = acceptedFrames.current
         .map((f) => f.faceLandmarks)
         .filter((f): f is LandmarkPoint[] => f !== null);
@@ -114,16 +135,20 @@ export function useAutoCapture({
         .map((f) => f.poseLandmarks)
         .filter((f): f is LandmarkPoint[] => f !== null);
 
+      const faceSummary = summarizeLandmarks(faceSets, aspect);
+      const poseSummary = summarizeLandmarks(poseSets, aspect);
+
       setResult({
-        faceLandmarksAveraged: averageLandmarks(faceSets),
-        poseLandmarksAveraged: averageLandmarks(poseSets),
+        faceLandmarksAveraged: faceSummary?.landmarks ?? null,
+        poseLandmarksAveraged: poseSummary?.landmarks ?? null,
+        faceLandmarkSd: faceSummary?.sd ?? null,
+        poseLandmarkSd: poseSummary?.sd ?? null,
+        jitter: faceSummary ? jitterOf(faceSummary, FACE_KEY_LANDMARKS) : null,
         representativeImage: bestImage.current,
         frameCount: acceptedFrames.current.length,
         avgQuality: averageQuality(acceptedFrames.current.map((f) => f.quality)),
         capturedAt: Date.now(),
         aspect,
-        landmarkJitterSd: landmarkJitterSd(faceSets.length ? faceSets : poseSets, aspect),
-        captureSpanMs: spanMs,
       });
       setPhase("complete");
     }
