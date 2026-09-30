@@ -25,7 +25,6 @@ const TRAINING_AGE_LABEL: Record<TrainingAge, string> = {
   unsure: "Not specified",
 };
 
-const BODY_FAT_LABEL = { lower: "Leaner", moderate: "Moderate", higher: "Higher" };
 
 export default function BodyResultsScreen({ session, trainingAge, onRecalibrate }: BodyResultsScreenProps) {
   const { metrics, loading, error } = useBodyMetrics(session, trainingAge);
@@ -108,14 +107,6 @@ export default function BodyResultsScreen({ session, trainingAge, onRecalibrate 
             </div>
 
             <div className="flex items-center justify-between text-sm border-t border-paper-line pt-4">
-              <span className="text-muted-onpaper">Body-fat estimate</span>
-              <span className="reading text-paper-text">
-                {BODY_FAT_LABEL[metrics.bodyFatEstimate.band]}
-                <span className="text-muted-onpaper text-xs"> (estimate only)</span>
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
               <span className="text-muted-onpaper">Training age</span>
               <span className="reading text-paper-text">{TRAINING_AGE_LABEL[metrics.trainingAge]}</span>
             </div>

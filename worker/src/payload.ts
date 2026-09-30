@@ -27,7 +27,6 @@ const REGIONS = ["shoulders", "chest", "waist", "arms", "legs", "posture"] as co
 const TRAINING_AGES = ["new", "under1y", "1to3y", "3plus", "unsure"] as const;
 const UNDERTONES = ["warm", "cool", "neutral"] as const;
 const TRENDS = ["up", "down", "flat"] as const;
-const BANDS = ["lower", "moderate", "higher"] as const;
 
 export interface FacePayload {
   overallScore: number;
@@ -41,7 +40,6 @@ export interface BodyPayload {
   overallSymmetry: number;
   zones: { key: string; label: string; region: (typeof REGIONS)[number]; value: number; actionable: boolean }[];
   priorityLever: { zoneKey: string; label: string; reason: string };
-  bodyFatEstimate: { band: (typeof BANDS)[number]; note: string };
   trainingAge: (typeof TRAINING_AGES)[number];
 }
 
@@ -168,13 +166,6 @@ function sanitizeBody(raw: unknown): BodyPayload {
         zoneKey: key(l.zoneKey, "bodyMetrics.priorityLever.zoneKey"),
         label: text(l.label, "bodyMetrics.priorityLever.label", MAX_LABEL),
         reason: text(l.reason, "bodyMetrics.priorityLever.reason", MAX_TEXT),
-      };
-    })(),
-    bodyFatEstimate: (() => {
-      const b = record(o.bodyFatEstimate, "bodyMetrics.bodyFatEstimate");
-      return {
-        band: oneOf(b.band, BANDS, "bodyMetrics.bodyFatEstimate.band"),
-        note: text(b.note, "bodyMetrics.bodyFatEstimate.note", MAX_TEXT),
       };
     })(),
     trainingAge: oneOf(o.trainingAge, TRAINING_AGES, "bodyMetrics.trainingAge"),
