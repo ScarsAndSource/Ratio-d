@@ -1,6 +1,7 @@
 import type { FaceMetrics } from "../../types/faceMetrics";
 import type { BodyMetrics } from "../../types/bodyMetrics";
-import type { SynthesisResult } from "../../types/synthesis";
+import type { SynthesisRequest, SynthesisResult } from "../../types/synthesis";
+import { toSynthesisBody, toSynthesisFace } from "./payload";
 import { supabase } from "../supabase/client";
 
 
@@ -8,10 +9,7 @@ const SYNTHESIS_ENDPOINT = import.meta.env.VITE_SYNTHESIS_ENDPOINT ?? "http://lo
 const REQUEST_TIMEOUT_MS = 15_000;
 
 
-async function postSynthesis(
-  token: string,
-  body: { faceMetrics: FaceMetrics | null; bodyMetrics: BodyMetrics | null }
-): Promise<SynthesisResult> {
+async function postSynthesis(token: string, body: SynthesisRequest): Promise<SynthesisResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -50,9 +48,10 @@ export async function requestSynthesis(params: {
   if (!token) throw new Error("Sign in to get a narrated read.");
 
 
-  const body = {
-    faceMetrics: params.faceMetrics ?? null,
-    bodyMetrics: params.bodyMetrics ?? null,
+  // Whitelisted, photo-free payload (see payload.ts): never send the raw metrics objects.
+  const body: SynthesisRequest = {
+    faceMetrics: params.faceMetrics ? toSynthesisFace(params.faceMetrics) : null,
+    bodyMetrics: params.bodyMetrics ? toSynthesisBody(params.bodyMetrics) : null,
   };
 
 

@@ -1,3 +1,5 @@
+import { sanitizeSynthesisRequest, utf8ByteLength, MAX_REQUEST_BYTES } from "./payload";
+
 export interface Env {
   ANTHROPIC_API_KEY: string;
   ALLOWED_ORIGIN: string;
@@ -62,6 +64,14 @@ function corsHeaders(origin: string): HeadersInit {
 }
 
 
+function jsonError(message: string, status: number, headers: HeadersInit): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { ...headers, "Content-Type": "application/json" },
+  });
+}
+
+
 interface VerifiedUser {
   id: string;
 }
@@ -123,35 +133,42 @@ async function handleSynthesis(request: Request, env: Env, headers: HeadersInit)
   }
 
 
+  // Validate and whitelist BEFORE burning a daily read: a malformed or oversized
+  // request must not burn one of their reads.
+  const declaredLength = Number(request.headers.get("Content-Length") ?? "0");
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
+    return jsonError("Request too large", 413, headers);
+  }
+
+  let requestText: string;
+  try {
+    requestText = await request.text();
+  } catch {
+    return jsonError("Could not read request body", 400, headers);
+  }
+  if (utf8ByteLength(requestText) > MAX_REQUEST_BYTES) {
+    return jsonError("Request too large", 413, headers);
+  }
+
+  let parsedBody: unknown;
+  try {
+    parsedBody = JSON.parse(requestText);
+  } catch {
+    return jsonError("Invalid JSON body", 400, headers);
+  }
+
+  const sanitized = sanitizeSynthesisRequest(parsedBody);
+  if (!sanitized.ok) {
+    return jsonError(sanitized.error, 400, headers);
+  }
+
   const withinCap = await checkAndIncrementUsage(user.id, env);
   if (!withinCap) {
-    return new Response(JSON.stringify({ error: "Daily scan-read limit reached. Try again tomorrow." }), {
-      status: 429,
-      headers: { ...headers, "Content-Type": "application/json" },
-    });
+    return jsonError("Daily scan-read limit reached. Try again tomorrow.", 429, headers);
   }
 
-
-  let body: { faceMetrics?: unknown; bodyMetrics?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { ...headers, "Content-Type": "application/json" },
-    });
-  }
-
-
-  if (!body.faceMetrics && !body.bodyMetrics) {
-    return new Response(JSON.stringify({ error: "At least one of faceMetrics or bodyMetrics is required" }), {
-      status: 400,
-      headers: { ...headers, "Content-Type": "application/json" },
-    });
-  }
-
-
-  const userPayload = JSON.stringify({ face: body.faceMetrics ?? null, body: body.bodyMetrics ?? null });
+  // Only the rebuilt, whitelisted object is ever forwarded to the model.
+  const userPayload = JSON.stringify({ face: sanitized.face, body: sanitized.body });
 
 
   let anthropicRes: Response;

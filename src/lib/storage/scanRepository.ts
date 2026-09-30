@@ -3,6 +3,7 @@ import type { StoredFaceScan, StoredBodyScan } from "../../types/scanHistory";
 import type { FaceMetrics } from "../../types/faceMetrics";
 import type { BodyMetrics } from "../../types/bodyMetrics";
 import type { LandmarkPoint } from "../../types/landmarks";
+import { bodyMetricsForStorage, bodyMetricsFromStorage } from "./serialization";
 
 
 function makeId(capturedAt: number): string {
@@ -41,7 +42,8 @@ export async function saveBodyScan(metrics: BodyMetrics, frontLandmarks: Landmar
     id: makeId(metrics.capturedAt),
     user_id: userId,
     captured_at: metrics.capturedAt,
-    metrics,
+    // Photo goes in its own column only; never duplicated inside the JSON.
+    metrics: bodyMetricsForStorage(metrics),
     front_reference_image: metrics.frontReferenceImage,
     front_landmarks: frontLandmarks,
   });
@@ -88,11 +90,17 @@ export async function loadBodyScans(): Promise<StoredBodyScan[]> {
   if (error || !data) return [];
 
 
-  return data.map((row) => ({
-    id: row.id,
-    capturedAt: row.captured_at,
-    metrics: row.metrics as BodyMetrics,
-    frontReferenceImage: row.front_reference_image,
-    frontLandmarks: row.front_landmarks as LandmarkPoint[] | null,
-  }));
+  return data.flatMap((row): StoredBodyScan[] => {
+    const metrics = bodyMetricsFromStorage(row.metrics, row.front_reference_image);
+    if (!metrics) return [];
+    return [
+      {
+        id: row.id,
+        capturedAt: row.captured_at,
+        metrics,
+        frontReferenceImage: metrics.frontReferenceImage,
+        frontLandmarks: row.front_landmarks as LandmarkPoint[] | null,
+      },
+    ];
+  });
 }
