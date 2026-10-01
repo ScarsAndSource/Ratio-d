@@ -5,10 +5,11 @@ interface AuthScreenProps {
   onSignIn: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string) => Promise<void>;
   error: string | null;
+  notice?: string | null;
 }
 
 
-export default function AuthScreen({ onSignIn, onSignUp, error }: AuthScreenProps) {
+export default function AuthScreen({ onSignIn, onSignUp, error, notice }: AuthScreenProps) {
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,12 +19,15 @@ export default function AuthScreen({ onSignIn, onSignUp, error }: AuthScreenProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    if (mode === "signIn") {
-      await onSignIn(email, password);
-    } else {
-      await onSignUp(email, password);
+    try {
+      if (mode === "signIn") {
+        await onSignIn(email, password);
+      } else {
+        await onSignUp(email, password);
+      }
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
 
@@ -76,7 +80,11 @@ export default function AuthScreen({ onSignIn, onSignUp, error }: AuthScreenProp
               {error}
             </p>
           )}
-
+          {!error && notice && (
+            <p role="status" className="text-reading text-sm">
+              {notice}
+            </p>
+          )}
 
           <button
             type="submit"
