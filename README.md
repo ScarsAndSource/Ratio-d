@@ -17,15 +17,7 @@ read only against your own baseline — never against anyone else's.
   guidance, score dials, and loading states.
 
 ## Status
-Phase 0/1 scaffold: build tooling + design tokens + shell only.
-No MediaPipe wiring yet.
-
-## Next
-1. Wire `@mediapipe/tasks-vision` (Face + Pose Landmarker) into the capture
-   flow, feeding live pose/lighting data into `ReadingRing`'s `progress`.
-2. Build the internal calibration harness (raw threshold readout on
-   screen) before tuning real auto-capture thresholds.
-3. Quality-gate + multi-frame averaging.
+Production ready! Fully wired with `@mediapipe/tasks-vision` (Face + Pose Landmarker), quality-gated multi-angle capture, isotropic face & body metric compute modules, Cloudflare Worker AI synthesis, Supabase auth/storage persistence, PWA manifest/assets, and calibration harnesses.
 
 ## Deploying (frontend + worker)
 Both `worker/wrangler.toml` and the frontend's env files ship with

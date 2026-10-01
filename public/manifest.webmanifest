@@ -1,0 +1,21 @@
+{
+  "name": "Plumbline",
+  "short_name": "Plumbline",
+  "description": "An instrument, not a mirror. Camera-based face and body measurement, read only against your own baseline.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#12161C",
+  "theme_color": "#12161C",
+  "icons": [
+    {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
