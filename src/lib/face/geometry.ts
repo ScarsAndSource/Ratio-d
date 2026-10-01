@@ -78,6 +78,10 @@ export function computeCanthalTilt(
 export interface FaceShapeResult {
   subScore: SubScore;
   shape: string;
+  /** Un-scored face height / cheek width (kept for calibration). */
+  ratio: number;
+  /** Un-scored jaw width / cheek width (kept for calibration). */
+  jawToCheek: number;
   widthGuide: AngleMeasurement;
   heightGuide: AngleMeasurement;
 }
@@ -115,6 +119,8 @@ export function computeFaceShape(
       actionable: false,
     },
     shape,
+    ratio,
+    jawToCheek,
     widthGuide: { label: "cheek width", valueDeg: 0, points: [lCheek, rCheek] },
     heightGuide: { label: "face height", valueDeg: 0, points: [forehead, chin] },
   };

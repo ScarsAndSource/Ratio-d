@@ -103,6 +103,12 @@ function Panel({ controller, label, trendKey, trendEpsilon }: RepeatabilityPanel
         </div>
       )}
 
+      {state.status !== "idle" && (
+        <button onClick={exit} className="mt-2 w-full rounded border border-ink-line py-1 text-muted-onink">
+          exit harness (back to results)
+        </button>
+      )}
+
       {state.error && <div className="mt-2 text-signal">{state.error}</div>}
       {state.status === "done" && state.failures >= 3 && (
         <div className="mt-1 text-signal">Stopped: three unreadable captures in a row.</div>

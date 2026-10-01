@@ -1,14 +1,7 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import type { BodyCaptureSession } from "../types/bodyCapture";
 import type { BodyMetrics, TrainingAge } from "../types/bodyMetrics";
-import {
-  computeShoulderHipRatio,
-  computeLimbSymmetry,
-  computePostureTilt,
-  computeForwardHead,
-} from "../lib/body/geometry";
-import { buildBodyMetrics } from "../lib/body/score";
-import { sanitizeAspect } from "../lib/geometry/space";
+import { computeBodyMetricsFromSession } from "../lib/body/fromSession";
 
 interface UseBodyMetricsResult {
   metrics: BodyMetrics | null;
@@ -17,51 +10,13 @@ interface UseBodyMetricsResult {
 }
 
 export function useBodyMetrics(session: BodyCaptureSession | null, trainingAge: TrainingAge): UseBodyMetricsResult {
-  const [metrics, setMetrics] = useState<BodyMetrics | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!session) return;
-    setLoading(true);
-    setError(null);
-
-    const frontCapture = session.captures.find((c) => c.angle === "front")?.result;
-    const sideCapture = session.captures.find((c) => c.angle === "side")?.result;
-    const front = frontCapture?.poseLandmarksAveraged;
-    const side = sideCapture?.poseLandmarksAveraged;
-    const frontImage = frontCapture?.representativeImage ?? null;
-    const frontAspect = sanitizeAspect(frontCapture?.aspect);
-    const sideAspect = sanitizeAspect(sideCapture?.aspect);
-
-    if (!front) {
-      setError("Could not read enough of the front angle to score this scan. Try recalibrating with more even lighting.");
-      setLoading(false);
-      return;
-    }
-
-    const shoulderHip = computeShoulderHipRatio(front, frontAspect);
-    const posture = computePostureTilt(front, frontAspect);
-    const symmetry = computeLimbSymmetry(front, frontAspect);
-    const forwardHead = side ? computeForwardHead(side, sideAspect) : null;
-
-    if (!shoulderHip || !posture) {
-      setError("Could not read enough of the front angle to score this scan. Try recalibrating with more even lighting.");
-      setLoading(false);
-      return;
-    }
-
-    const zones = [shoulderHip, posture, ...symmetry, ...(forwardHead ? [forwardHead] : [])];
-
-    setMetrics(
-      buildBodyMetrics({
-        zones,
-        trainingAge,
-        frontReferenceImage: frontImage,
-      })
-    );
-    setLoading(false);
+  // Same code path as the repeatability harness (lib/body/fromSession.ts).
+  // Synchronous, so there is no loading state; memoised so `metrics` keeps one
+  // identity (and one capturedAt) for as long as the session is on screen.
+  return useMemo<UseBodyMetricsResult>(() => {
+    if (!session) return { metrics: null, loading: false, error: null };
+    const out = computeBodyMetricsFromSession(session, trainingAge);
+    if ("error" in out) return { metrics: null, loading: false, error: out.error };
+    return { metrics: out.metrics, loading: false, error: null };
   }, [session, trainingAge]);
-
-  return { metrics, loading, error };
 }

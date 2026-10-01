@@ -11,9 +11,6 @@ import ScoreTrendDisplay from "./ScoreTrendDisplay";
 import RecommendationsPanel from "./RecommendationsPanel";
 import { getBodyRecommendations } from "../lib/body/exerciseRecommendations";
 
-import RepeatabilityPanel from "./RepeatabilityPanel";
-import { flattenBody } from "../lib/stats/flattenScan";
-
 interface BodyResultsScreenProps {
   session: BodyCaptureSession;
   trainingAge: TrainingAge;
@@ -28,7 +25,6 @@ const TRAINING_AGE_LABEL: Record<TrainingAge, string> = {
   unsure: "Not specified",
 };
 
-
 export default function BodyResultsScreen({ session, trainingAge, onRecalibrate }: BodyResultsScreenProps) {
   const { metrics, loading, error } = useBodyMetrics(session, trainingAge);
 
@@ -38,15 +34,7 @@ export default function BodyResultsScreen({ session, trainingAge, onRecalibrate 
   );
 
   const { synthesis, loading: synthesisLoading, error: synthesisError } = useSynthesis(null, metrics);
-  const { trend, previousScan } = useBodyProgress(metrics, frontLandmarks);
-
-  const repeatValues = useMemo(() => {
-    if (!metrics) return null;
-    const j = session.captures
-      .map((c) => c.result.landmarkJitterSd)
-      .filter((x): x is number => typeof x === "number");
-    return flattenBody(metrics, j.length ? j.reduce((a, b) => a + b, 0) / j.length : null);
-  }, [metrics, session]);
+  const { trend, previousScan, saveError } = useBodyProgress(metrics, frontLandmarks);
 
   const showGhost =
     metrics?.frontReferenceImage &&
@@ -70,6 +58,11 @@ export default function BodyResultsScreen({ session, trainingAge, onRecalibrate 
         {error && (
           <p role="alert" className="text-signal text-sm">
             {error}
+          </p>
+        )}
+        {saveError && (
+          <p role="alert" className="text-signal text-sm">
+            {saveError}
           </p>
         )}
 
@@ -121,8 +114,6 @@ export default function BodyResultsScreen({ session, trainingAge, onRecalibrate 
               <span className="text-muted-onpaper">Training age</span>
               <span className="reading text-paper-text">{TRAINING_AGE_LABEL[metrics.trainingAge]}</span>
             </div>
-
-            {repeatValues && <RepeatabilityPanel mode="body" values={repeatValues} />}
 
             <SynthesisNarrative synthesis={synthesis} loading={synthesisLoading} error={synthesisError} />
           </>
