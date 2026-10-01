@@ -6,27 +6,46 @@ interface UseCameraResult {
   error: string | null;
 }
 
-export function useCamera(): UseCameraResult {
+/**
+ * Opens the front camera into `videoRef` while `enabled` is true and releases it
+ * (camera light off) while it is false. The <video> element must stay mounted
+ * across enable/disable so the ref keeps pointing at it.
+ */
+export function useCamera(enabled: boolean = true): UseCameraResult {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setReady(false);
+      return;
+    }
+
     let stream: MediaStream | null = null;
     let cancelled = false;
 
+    const stopStream = (s: MediaStream | null) => s?.getTracks().forEach((track) => track.stop());
+
     async function start() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        setError(null);
+        const opened = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user", width: 640, height: 480 },
           audio: false,
         });
-        if (cancelled || !videoRef.current) return;
-        videoRef.current.srcObject = stream;
+        // Unmounted (or disabled) while the permission prompt was open: release it,
+        // otherwise the camera would stay on with nothing using it.
+        if (cancelled || !videoRef.current) {
+          stopStream(opened);
+          return;
+        }
+        stream = opened;
+        videoRef.current.srcObject = opened;
         await videoRef.current.play();
-        setReady(true);
+        if (!cancelled) setReady(true);
       } catch (err) {
-        setError(describeCameraError(err));
+        if (!cancelled) setError(describeCameraError(err));
       }
     }
 
@@ -34,9 +53,10 @@ export function useCamera(): UseCameraResult {
 
     return () => {
       cancelled = true;
-      stream?.getTracks().forEach((track) => track.stop());
+      stopStream(stream);
+      if (videoRef.current) videoRef.current.srcObject = null;
     };
-  }, []);
+  }, [enabled]);
 
   return { videoRef, ready, error };
 }

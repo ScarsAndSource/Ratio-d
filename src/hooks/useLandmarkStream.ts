@@ -26,10 +26,18 @@ export function useLandmarkStream(
   const lastVideoTime = useRef(-1);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      // Camera off (results on screen, or not started): drop the last detections so
+      // a rescan can never lock on stale landmarks from the previous capture.
+      setFaceLandmarks(null);
+      setPoseLandmarks(null);
+      setHeadPose(null);
+      return;
+    }
     let cancelled = false;
     let face: Awaited<ReturnType<typeof loadFaceLandmarker>>;
     let pose: Awaited<ReturnType<typeof loadPoseLandmarker>>;
+    lastVideoTime.current = -1;
 
     async function init() {
       [face, pose] = await Promise.all([loadFaceLandmarker(), loadPoseLandmarker()]);
@@ -39,6 +47,7 @@ export function useLandmarkStream(
     }
 
     function loop() {
+      if (cancelled) return;
       const video = videoRef.current;
       if (!video || video.readyState < 2) {
         rafId.current = requestAnimationFrame(loop);
