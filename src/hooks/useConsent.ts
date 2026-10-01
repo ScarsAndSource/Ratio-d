@@ -9,24 +9,22 @@ interface UseConsentResult {
 }
 
 
+interface ConsentState {
+  /** The user this answer belongs to. */
+  userId: string;
+  consented: boolean;
+}
+
+
 export function useConsent(userId: string | null): UseConsentResult {
-  const [consented, setConsented] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<ConsentState | null>(null);
 
 
   useEffect(() => {
-    if (!userId) {
-      setConsented(false);
-      setLoading(false);
-      return;
-    }
+    if (!userId) return;
     let cancelled = false;
-    setLoading(true);
     hasCurrentConsent(userId).then((result) => {
-      if (!cancelled) {
-        setConsented(result);
-        setLoading(false);
-      }
+      if (!cancelled) setState({ userId, consented: result });
     });
     return () => {
       cancelled = true;
@@ -34,10 +32,17 @@ export function useConsent(userId: string | null): UseConsentResult {
   }, [userId]);
 
 
+  // Derived, not stored: the moment a user id appears there is no answer for it
+  // yet, so `loading` is true on that very render (no flash of the consent screen).
+  const answered = state !== null && state.userId === userId;
+  const loading = userId !== null && !answered;
+  const consented = answered && state.consented;
+
+
   const giveConsent = useCallback(async () => {
     if (!userId) return;
     await recordConsent(userId);
-    setConsented(true);
+    setState({ userId, consented: true });
   }, [userId]);
 
 

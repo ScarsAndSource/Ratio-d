@@ -10,28 +10,40 @@ interface UseBodyProgressResult {
   trend: TrendResult;
   previousScan: StoredBodyScan | null;
   scanCount: number;
+  /** Set when the scan could not be saved to the account. */
+  saveError: string | null;
 }
 
 export function useBodyProgress(metrics: BodyMetrics | null, frontLandmarks: LandmarkPoint[] | null): UseBodyProgressResult {
   const [scans, setScans] = useState<StoredBodyScan[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const savedForTimestamp = useRef<number | null>(null);
+
+  // Tracks real unmounting only (see useFaceProgress for why not a per-effect flag).
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!metrics) return;
     if (savedForTimestamp.current === metrics.capturedAt) return;
     savedForTimestamp.current = metrics.capturedAt;
 
-    let cancelled = false;
     saveBodyScan(metrics, frontLandmarks)
       .then(() => loadBodyScans())
       .then((all) => {
-        if (!cancelled) setScans(all);
+        if (mounted.current) setScans(all);
       })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
+      .catch((err: unknown) => {
+        console.error("Could not save body scan:", err);
+        if (mounted.current) {
+          setSaveError("This scan could not be saved to your account, so it won't appear in your history or trend.");
+        }
+      });
   }, [metrics, frontLandmarks]);
 
   const trend = computeTrend(
@@ -40,5 +52,5 @@ export function useBodyProgress(metrics: BodyMetrics | null, frontLandmarks: Lan
   );
   const previousScan = scans.length > 1 ? scans[1] ?? null : null;
 
-  return { trend, previousScan, scanCount: scans.length };
+  return { trend, previousScan, scanCount: scans.length, saveError };
 }
