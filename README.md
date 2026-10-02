@@ -33,46 +33,53 @@ The repository includes an automated internal calibration harness to measure mea
 2. `summarizeRuns()` calculates metric mean, standard deviation ($SD$), standard error of measurement ($SEM = SD \times \sqrt{1 - R}$), and $MDC_{95} = SEM \times 1.96 \times \sqrt{2}$.
 3. Measured $MDC_{95}$ values populate `src/lib/progress/thresholds.ts` so progress trend indicators only trigger when a change exceeds sensor measurement noise.
 
-## Deploying (frontend + worker)
-Both `worker/wrangler.toml` and the frontend's env files ship with
-placeholder values on purpose - a fresh clone should never accidentally
-point at someone else's Supabase project. Before a real deploy:
+## Progressive Web App (PWA) Support
+Plumbline is configured as an installable standalone PWA for mobile browsers (iOS Safari & Android Chrome):
+- **Web Manifest**: `public/manifest.webmanifest` specifies `display: standalone`, `theme_color: #12161C`, and background colors matching the dark viewfinder (`ink`).
+- **PWA Assets**: `public/favicon-32.png`, `public/apple-touch-icon.png`, and `public/og-image.png`.
+- **Icon Generation**: To regenerate PNG assets from SVGs, run `npm run icons` (uses `sharp` with anti-aliasing and padding).
 
-1. Copy `.env.example` -> `.env.local` for local dev, and
-   `.env.production.example` -> `.env.production.local` for a production
-   build, filling in your real Supabase project and worker URL in each.
-2. In `worker/wrangler.toml`, fill in `[env.production.vars]` with your
-   real Supabase project and the exact origin your frontend is served
-   from, then set the two production secrets:
-   `wrangler secret put ANTHROPIC_API_KEY --env production` and
-   `wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production`.
-3. Deploy the worker with `wrangler deploy --env production` (a plain
-   `wrangler deploy` intentionally uses the dev config, not this one).
-   If a placeholder was missed, the worker fails every request with a
-   clear "still set to its placeholder value" error instead of silently
-   calling a broken URL - check the response body if requests 500 right
-   after deploying.
-4. Point the frontend's `VITE_SYNTHESIS_ENDPOINT` at the worker URL
-   `wrangler deploy` prints out, then run `npm run build`.
-5. In `index.html`, change `og:image` and `twitter:image` from
-   `/og-image.png` to an absolute URL (`https://YOUR-DOMAIN/og-image.png`)
-   - most link-preview crawlers won't fetch a relative path.
+## Production Deploy & Security Checklist
 
-## Privacy: what leaves the device
-- Camera frames are analysed in the browser (MediaPipe). They are not uploaded.
-- One representative photo per scan is stored in your Supabase account
-  (`face_scans.representative_image`, `body_scans.front_reference_image`).
-- For the written summary, only a whitelisted set of computed numbers is sent
-  to the worker and on to Claude (`src/lib/synthesis/payload.ts`, re-validated
-  in `worker/src/payload.ts`). Photos, landmark coordinates and timestamps are
-  never included; the worker drops any extra field and rejects oversized or
-  malformed requests. Keep the consent screen in sync with this list and bump
-  `CURRENT_CONSENT_VERSION` whenever it changes.
-- After deploying this version, run
-  `supabase/migrations/2026-10-strip-duplicate-body-photo.sql` once to remove
-  the duplicate photo copy from older `body_scans` rows.
+### 1. Database Setup
+- Execute `supabase/schema.sql` in your Supabase SQL Editor to create `face_scans`, `body_scans`, `user_consent`, and `worker_usage` tables with Row Level Security (RLS).
+- Run `supabase/migrations/2026-10-strip-duplicate-body-photo.sql` if upgrading an existing deployment.
 
-## Permanent no-list (see plan doc)
-No comparison to other people, ever. No absolute-precision claims from
-a phone camera. No "instant" on anything that isn't. No prescribing
-effort against a structural (non-trainable) trait.
+### 2. Cloudflare Worker (Backend AI Synthesis & Auth Gate)
+Both `worker/wrangler.toml` and frontend `.env` files ship with placeholder values on purpose:
+1. In `worker/wrangler.toml`, configure `[env.production.vars]`:
+   - `ALLOWED_ORIGIN`: Exact frontend origin (e.g. `https://plumbline.app` - no trailing slash).
+   - `SUPABASE_URL` & `SUPABASE_ANON_KEY`: Matching your Supabase project API credentials.
+2. Set production secrets via Wrangler:
+   ```bash
+   npx wrangler secret put ANTHROPIC_API_KEY --env production
+   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production
+   ```
+3. Deploy the worker:
+   ```bash
+   cd worker && npx wrangler deploy --env production
+   ```
+4. **Security & Rate-Limiting Features**:
+   - Validates Supabase auth JWT token on every call.
+   - Enforces a 30 call/day limit per user via `worker_usage` table.
+   - Restricts API payload to sanitized numbers (re-validated in `worker/src/payload.ts`).
+   - Serves secure `DELETE /account` endpoint for self-serve user account deletion.
+
+### 3. Frontend Deployment
+1. Set host environment variables (Vercel / Netlify / Cloudflare Pages):
+   - `VITE_SYNTHESIS_ENDPOINT`: Deployed Worker URL.
+   - `VITE_SUPABASE_URL`: Supabase project URL.
+   - `VITE_SUPABASE_ANON_KEY`: Supabase anon key.
+2. Run `npm run build` (executes `tsc -b && vite build`).
+3. In `index.html`, update `og:image` and `twitter:image` to absolute production URLs (`https://YOUR-DOMAIN/og-image.png`).
+
+## Privacy & Data Handling
+- **Local Frame Analysis**: All camera frames are analyzed in-browser via MediaPipe WASM. No video feeds or raw frames ever leave your device.
+- **On-Device Reference Images**: Representative images are stored locally in client IndexedDB / Supabase user storage strictly for drawing explainability overlays and ghost comparisons.
+- **Anonymized AI Prompts**: Only computed numeric measurements are sent to Claude for narration. No names, photos, landmarks, or timestamps are attached.
+
+## Permanent Design Directives
+- No comparison to other people, ever.
+- No absolute-precision claims from a mobile camera.
+- No "instant" claims on physical progression.
+- No prescribing effort against structural (non-trainable) traits.
