@@ -19,6 +19,20 @@ read only against your own baseline — never against anyone else's.
 ## Status
 Production ready! Fully wired with `@mediapipe/tasks-vision` (Face + Pose Landmarker), quality-gated multi-angle capture, isotropic face & body metric compute modules, Cloudflare Worker AI synthesis, Supabase auth/storage persistence, PWA manifest/assets, and calibration harnesses.
 
+## System Architecture & Metric Engine
+- **Browser-Side Landmarking**: Camera frames are processed locally using MediaPipe Tasks Vision (`FaceLandmarker` and `PoseLandmarker`). Raw frames never leave the client device.
+- **Quality Gating & Stability**: Live capture gates analyze lighting, head pose (pitch/yaw/roll from transformation matrix), and landmark jitter standard deviation (`landmarkJitterSd`) across consecutive frames. Captures only fire when stability thresholds are met.
+- **Isotropic Geometry Math**: All face and body measurements convert 2D pixel landmarks to aspect-corrected isotropic space (`src/lib/geometry/space.ts`), making canthal tilt, face height/width ratios, and shoulder/waist/hip taper scores aspect-ratio invariant across different camera sensors.
+- **Unified Compute Modules**:
+  - Face metrics (`src/lib/face/compute.ts`): Computes canthal tilt, face shape ratio, symmetry, and skin tone/smoothness metrics from single captures.
+  - Body metrics (`src/lib/body/fromSession.ts`): Aggregates front, side, and back pose captures into a unified body session reading, calculating shoulder-to-waist taper, chest depth proxy, and body fat band estimates.
+
+## Calibration & Repeatability Harness
+The repository includes an automated internal calibration harness to measure measurement noise and compute Minimum Detectable Change ($MDC_{95}$):
+1. Dev-only harness (`useRepeatabilityRun.ts` and `RepeatabilityPanel.tsx`) runs $N$ consecutive captures under fixed positioning.
+2. `summarizeRuns()` calculates metric mean, standard deviation ($SD$), standard error of measurement ($SEM = SD \times \sqrt{1 - R}$), and $MDC_{95} = SEM \times 1.96 \times \sqrt{2}$.
+3. Measured $MDC_{95}$ values populate `src/lib/progress/thresholds.ts` so progress trend indicators only trigger when a change exceeds sensor measurement noise.
+
 ## Deploying (frontend + worker)
 Both `worker/wrangler.toml` and the frontend's env files ship with
 placeholder values on purpose - a fresh clone should never accidentally
